@@ -1,24 +1,57 @@
 import React, { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import UserLayout from './layouts/UserLayout';
+import AdminLayout from './layouts/AdminLayout';
 import Home from './views/Home';
 import Catalog from './views/Catalog';
 import MyBooks from './views/MyBooks';
+import Digital from './views/Digital';
+import StudentRequests from './views/StudentRequests';
+import History from './views/History';
+import StudentSettings from './views/StudentSettings';
+import AdminDashboard from './views/AdminDashboard';
+import AdminInventory from './views/AdminInventory';
+import AdminRequests from './views/AdminRequests';
+import AdminMembers from './views/AdminMembers';
+import AdminReports from './views/AdminReports';
+import AdminSettings from './views/AdminSettings';
+import Login from './views/Login';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(null);
+
+  const handleLogin = (role: 'student' | 'admin') => {
+    setUserRole(role);
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        <Header />
-        <main className="flex-1 overflow-y-auto custom-scrollbar">
-          {activeTab === 'home' && <Home setActiveTab={setActiveTab} />}
-          {activeTab === 'catalog' && <Catalog />}
-          {activeTab === 'my-books' && <MyBooks />}
-        </main>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login onLogin={handleLogin} />} />
+      
+      {/* Student Routes */}
+      <Route path="/" element={userRole === 'student' ? <UserLayout /> : <Navigate to="/login" />}>
+        <Route index element={<Navigate to="/home" replace />} />
+        <Route path="home" element={<Home />} />
+        <Route path="catalog" element={<Catalog />} />
+        <Route path="my-books" element={<MyBooks />} />
+        <Route path="digital" element={<Digital />} />
+        <Route path="requests" element={<StudentRequests />} />
+        <Route path="history" element={<History />} />
+        <Route path="settings" element={<StudentSettings />} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={userRole === 'admin' ? <AdminLayout /> : <Navigate to="/login" />}>
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="inventory" element={<AdminInventory />} />
+        <Route path="requests" element={<AdminRequests />} />
+        <Route path="members" element={<AdminMembers />} />
+        <Route path="reports" element={<AdminReports />} />
+        <Route path="settings" element={<AdminSettings />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }

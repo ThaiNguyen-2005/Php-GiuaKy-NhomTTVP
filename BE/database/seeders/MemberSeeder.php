@@ -13,8 +13,8 @@ class MemberSeeder extends Seeder
     public function run(): void
     {
         \Illuminate\Support\Facades\DB::table('members')->insert([
-            ['member_id' => 1, 'name' => 'Alen King', 'email' => 'alenking@example.com', 'phone_number' => '1234567890', 'join_date' => '2026-03-17'],
-            ['member_id' => 2, 'name' => 'Alece Hofman', 'email' => 'alecehofman@example.com', 'phone_number' => '9876543210', 'join_date' => '2026-03-17'],
+            ['member_id' => 1, 'name' => 'Alen King', 'email' => 'alenking@example.com', 'password' => \Illuminate\Support\Facades\Hash::make('123456'), 'phone_number' => '1234567890', 'join_date' => '2026-03-17'],
+            ['member_id' => 2, 'name' => 'Alece Hofman', 'email' => 'alecehofman@example.com', 'password' => \Illuminate\Support\Facades\Hash::make('123456'), 'phone_number' => '9876543210', 'join_date' => '2026-03-17'],
         ]);
     }
 }

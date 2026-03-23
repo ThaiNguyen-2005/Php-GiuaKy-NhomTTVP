@@ -2,15 +2,14 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
-  { path: '/home', icon: 'home', label: 'Trang chủ' },
-  { path: '/catalog', icon: 'search', label: 'Tìm kiếm sách' },
-  { path: '/digital', icon: 'menu_book', label: 'Tài liệu số' },
-  { path: '/my-books', icon: 'library_books', label: 'Sách của tôi' },
-  { path: '/requests', icon: 'pending_actions', label: 'Yêu cầu mượn' },
-  { path: '/history', icon: 'history', label: 'Lịch sử' },
+  { path: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan' },
+  { path: '/admin/inventory', icon: 'inventory', label: 'Quản lý kho sách' },
+  { path: '/admin/requests', icon: 'pending_actions', label: 'Duyệt mượn sách' },
+  { path: '/admin/members', icon: 'group', label: 'Thành viên' },
+  { path: '/admin/reports', icon: 'bar_chart', label: 'Báo cáo thông kê' },
 ];
 
-export default function Sidebar() {
+export default function AdminSidebar() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -18,14 +17,14 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 flex flex-col h-full bg-surface-bright border-r border-surface-container-high z-30 shrink-0">
+    <aside className="w-64 flex flex-col h-full bg-slate-900 border-r border-slate-800 z-30 shrink-0 text-slate-300">
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white">
-          <span className="material-symbols-outlined filled">school</span>
+          <span className="material-symbols-outlined filled">admin_panel_settings</span>
         </div>
         <div>
-          <h1 className="font-bold text-sm leading-tight text-primary">HCMUE Library</h1>
-          <p className="text-[10px] text-on-surface-variant tracking-wider uppercase">Digital System</p>
+          <h1 className="font-bold text-sm leading-tight text-white">HCMUE Admin</h1>
+          <p className="text-[10px] text-slate-400 tracking-wider uppercase">Librarian Panel</p>
         </div>
       </div>
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
@@ -37,36 +36,36 @@ export default function Sidebar() {
               `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                 isActive
                   ? 'bg-primary text-white font-medium'
-                  : 'text-on-surface-variant hover:bg-surface-container-low font-medium'
+                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium'
               }`
             }
           >
             {({ isActive }) => (
-              <React.Fragment>
+              <>
                 <span className={`material-symbols-outlined ${isActive ? 'filled' : ''}`}>{item.icon}</span>
                 <span className="text-sm">{item.label}</span>
-              </React.Fragment>
+              </>
             )}
           </NavLink>
         ))}
       </nav>
-      <div className="p-4 border-t border-surface-container-high space-y-1">
+      <div className="p-4 border-t border-slate-800 space-y-1">
         <NavLink 
-          to="/settings"
+          to="/admin/settings"
           className={({ isActive }) =>
             `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               isActive
                 ? 'bg-primary text-white font-medium'
-                : 'text-on-surface-variant hover:bg-surface-container-low font-medium'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 font-medium'
             }`
           }
         >
           <span className="material-symbols-outlined">settings</span>
-          <span className="text-sm">Cài đặt</span>
+          <span className="text-sm">Cài đặt hệ thống</span>
         </NavLink>
         <button 
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-error hover:bg-red-50"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-red-400 hover:bg-red-500/10 mt-1"
         >
           <span className="material-symbols-outlined">logout</span>
           <span className="text-sm font-medium">Đăng xuất</span>
