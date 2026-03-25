@@ -18,7 +18,7 @@ import AdminSettings from './views/AdminSettings';
 import Login from './views/Login';
 
 export default function App() {
-  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(null);
+  const [userRole, setUserRole] = useState<'student' | 'admin' | null>('student');
 
   const handleLogin = (role: 'student' | 'admin') => {
     setUserRole(role);
@@ -29,8 +29,7 @@ export default function App() {
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
       
       {/* Student Routes */}
-      <Route path="/" element={userRole === 'student' ? <UserLayout /> : <Navigate to="/login" />}>
-        <Route index element={<Navigate to="/home" replace />} />
+<Route path="/" element={<UserLayout />} >        <Route index element={<Navigate to="/home" replace />} />
         <Route path="home" element={<Home />} />
         <Route path="catalog" element={<Catalog />} />
         <Route path="my-books" element={<MyBooks />} />

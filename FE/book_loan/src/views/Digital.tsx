@@ -1,15 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const digitalResources = [
-  { id: 1, title: 'Giáo trình Giải tích 1', author: 'Bộ môn Toán', format: 'PDF', size: '24 MB', type: 'Tài liệu bắt buộc', cover: 'https://images.unsplash.com/photo-1614113489855-66422ad300a4?auto=format&fit=crop&q=80&w=400', color: 'bg-primary' },
-  { id: 2, title: 'Audio: Tiếng Anh giao tiếp B1', author: 'Khoa Ngoại ngữ', format: 'MP3', size: '150 MB', type: 'Tự học', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400', color: 'bg-tertiary' },
-  { id: 3, title: 'EBook: Tâm lý học phát triển', author: 'TS. Nguyễn Văn A', format: 'EPUB', size: '12 MB', type: 'Tham khảo', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400', color: 'bg-green-500' },
-  { id: 4, title: 'Slide Bài giảng Lịch sử Đảng', author: 'Khoa Chính trị', format: 'PPTX', size: '45 MB', type: 'Bài giảng', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400', color: 'bg-orange-500' },
-  { id: 5, title: 'Tạp chí Khoa học số 45', author: 'HCMUE', format: 'PDF', size: '8 MB', type: 'Nghiên cứu', cover: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=400', color: 'bg-primary' },
-];
 
 export default function Digital() {
   const [activeFilter, setActiveFilter] = useState('ALL');
+  // 1. Tạo cái giỏ trống để đựng sách thật lấy từ Database về
+  const [documents, setDocuments] = useState<any[]>([]);
+
+  // 2. Dùng useEffect để tự động chạy đi lấy sách ngay khi vừa mở trang web
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        // Chỗ này quan trọng: Đây là đường dẫn API gọi sang Laravel (Tạm thời tớ để mẫu)
+        const response = await fetch('http://127.0.0.1:8000/api/digital-documents'); 
+        const data = await response.json();
+        
+        // Lấy được dữ liệu thì đổ vào cái giỏ
+        setDocuments(data);
+      } catch (error) {
+        console.error("Trục trặc đường truyền rồi:", error);
+      }
+    };
+
+    fetchDocuments();
+  }, []);
 
   return (
     <div className="p-8 space-y-8 h-full flex flex-col">
@@ -41,7 +54,7 @@ export default function Digital() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-max">
-        {digitalResources.map(resource => (
+       {documents.map(resource => (
           <div key={resource.id} className="bg-surface-bright rounded-2xl p-4 scholar-shadow flex flex-col group border border-surface-container-low hover:border-primary/30 transition-colors">
             <div className="aspect-square relative rounded-xl overflow-hidden bg-surface-container mb-4">
                <img src={resource.cover} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -55,7 +68,15 @@ export default function Digital() {
             <div className="flex-1 flex flex-col">
               <span className="text-[10px] font-bold text-outline uppercase tracking-widest">{resource.type}</span>
               <h3 className="font-bold text-sm text-on-surface mt-1 line-clamp-2 leading-snug group-hover:text-primary transition-colors">{resource.title}</h3>
-              <p className="text-xs text-on-surface-variant mt-1.5 line-clamp-1">{resource.author}</p>
+              
+              { }
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="text-xs text-on-surface-variant line-clamp-1">{resource.author}</p>
+                <div className="flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-md">
+                  <span className="material-symbols-outlined text-[14px]">cloud_download</span>
+                  <span className="font-medium">{resource.downloads}</span>
+                </div>
+              </div>
             </div>
 
             <div className="mt-4 pt-4 border-t border-surface-container grid grid-cols-2 gap-2">
