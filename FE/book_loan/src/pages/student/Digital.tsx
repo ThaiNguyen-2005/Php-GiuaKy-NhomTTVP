@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
-
-const digitalResources = [
-  { id: 1, title: 'Giáo trình Giải tích 1', author: 'Bộ môn Toán', format: 'PDF', size: '24 MB', type: 'Tài liệu bắt buộc', cover: 'https://images.unsplash.com/photo-1614113489855-66422ad300a4?auto=format&fit=crop&q=80&w=400', color: 'bg-primary' },
-  { id: 2, title: 'Audio: Tiếng Anh giao tiếp B1', author: 'Khoa Ngoại ngữ', format: 'MP3', size: '150 MB', type: 'Tự học', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400', color: 'bg-tertiary' },
-  { id: 3, title: 'EBook: Tâm lý học phát triển', author: 'TS. Nguyễn Văn A', format: 'EPUB', size: '12 MB', type: 'Tham khảo', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400', color: 'bg-green-500' },
-  { id: 4, title: 'Slide Bài giảng Lịch sử Đảng', author: 'Khoa Chính trị', format: 'PPTX', size: '45 MB', type: 'Bài giảng', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400', color: 'bg-orange-500' },
-  { id: 5, title: 'Tạp chí Khoa học số 45', author: 'HCMUE', format: 'PDF', size: '8 MB', type: 'Nghiên cứu', cover: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=400', color: 'bg-primary' },
-];
+import React, { useState, useEffect } from 'react';
+import { fetchBooks } from '../../api/bookApi';
 
 export default function Digital() {
   const [activeFilter, setActiveFilter] = useState('ALL');
+  const [digitalResources, setDigitalResources] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBooks().then(data => {
+      // Map books to mock digital resources since we don't have separate digital table
+      const mapped = data.map((b: any, index: number) => ({
+          id: b.book_id,
+          title: b.title,
+          author: b.author,
+          format: index % 2 === 0 ? 'PDF' : 'EPUB',
+          size: `${Math.floor(Math.random() * 50) + 5} MB`,
+          type: b.category,
+          cover: b.cover,
+          color: index % 3 === 0 ? 'bg-primary' : (index % 3 === 1 ? 'bg-tertiary' : 'bg-green-500')
+      }));
+      setDigitalResources(mapped);
+      setIsLoading(false);
+    }).catch(e => {
+        console.error(e);
+        setIsLoading(false);
+    });
+  }, []);
 
   return (
     <div className="p-8 space-y-8 h-full flex flex-col">
@@ -41,7 +57,9 @@ export default function Digital() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-max">
-        {digitalResources.map(resource => (
+        {isLoading ? (
+            <div className="col-span-full py-12 text-center text-on-surface-variant font-medium">Đang tải tài liệu...</div>
+        ) : digitalResources.map(resource => (
           <div key={resource.id} className="bg-surface-bright rounded-2xl p-4 scholar-shadow flex flex-col group border border-surface-container-low hover:border-primary/30 transition-colors">
             <div className="aspect-square relative rounded-xl overflow-hidden bg-surface-container mb-4">
                <img src={resource.cover} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
