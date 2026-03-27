@@ -1,14 +1,42 @@
-import React, { useState } from 'react';
-
-const catalogBooks = [
-  { id: 1, title: 'Lý luận giáo dục học hiện đại', author: 'PGS.TS Nguyễn Văn Hiếu', location: 'Khu A1 - Kệ 102', status: 'Còn sách', statusColor: 'text-green-700 bg-green-100', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400', code: 'GDH-2024-001', pages: 452, desc: 'Cuốn sách tập trung vào các xu hướng giáo dục hiện đại trong bối cảnh chuyển đổi số. Tác giả phân tích sâu về các phương pháp giảng dạy tích cực, vai trò của người thầy trong kỷ nguyên AI và cách thiết kế chương trình học lấy người học làm trung tâm. Đây là tài liệu tham khảo thiết yếu cho sinh viên và giảng viên ngành sư phạm.', category: 'Giáo dục học', available: 2 },
-  { id: 2, title: 'Tâm lý học sư phạm căn bản', author: 'Trần Thu Hà', location: 'Khu B2 - Kệ 05', status: 'Đã mượn', statusColor: 'text-on-tertiary-container bg-tertiary-container', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400', code: 'TLH-2023-042', pages: 320, desc: 'Nghiên cứu về tâm lý học sinh...', category: 'Tâm lý học', available: 0, returnDate: '25/12/2026' },
-  { id: 3, title: 'Phương pháp nghiên cứu khoa học giáo dục', author: 'Lê Minh Tuấn', location: 'Khu B3 - Kệ 205', status: 'Còn sách', statusColor: 'text-green-700 bg-green-100', cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400', code: 'NCKH-2022-110', pages: 280, desc: 'Hướng dẫn chi tiết cách thực hiện một đề tài nghiên cứu...', category: 'Giáo dục học', available: 5 },
-  { id: 4, title: 'Quản lý nhà trường trong kỷ nguyên số', author: 'Đặng Quốc Bảo', location: 'Khu C2 - Kệ 001', status: 'Còn sách', statusColor: 'text-green-700 bg-green-100', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400', code: 'QLGD-2024-005', pages: 350, desc: 'Cẩm nang cho các nhà quản lý giáo dục...', category: 'Giáo dục học', available: 3 },
-];
+import React, { useState, useEffect } from 'react';
+import { fetchBooks } from '../../api/bookApi';
+import { requestBorrow } from '../../api/borrowApi';
+import { FormattedBook } from '../../types/book';
 
 export default function Catalog() {
   const [selectedBook, setSelectedBook] = useState<any>(null);
+  const [books, setBooks] = useState<FormattedBook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+     fetchBooks().then(data => {
+         setBooks(data);
+         setIsLoading(false);
+     }).catch(e => {
+         console.error(e);
+         setIsLoading(false);
+     });
+  }, []);
+
+  const handleBorrow = async () => {
+      try {
+          const userStr = localStorage.getItem('user');
+          if (!userStr) {
+              alert('Bạn cần đăng nhập để mượn sách');
+              return;
+          }
+          const user = JSON.parse(userStr);
+          if (!user.member_id) {
+              alert('Chỉ sinh viên mới có thể yêu cầu mượn sách');
+              return;
+          }
+          await requestBorrow(user.member_id, selectedBook.id);
+          alert('Yêu cầu mượn sách đã được gửi thành công!');
+          setSelectedBook(null);
+      } catch (e: any) {
+          alert(e.message || 'Lỗi khi yêu cầu mượn sách');
+      }
+  };
 
   return (
     <div className="flex h-full relative">
@@ -63,7 +91,7 @@ export default function Catalog() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-on-surface">Danh mục sách</h2>
-            <p className="text-sm text-on-surface-variant mt-1">Hiển thị 124 kết quả trong 'Giáo dục học'</p>
+            <p className="text-sm text-on-surface-variant mt-1">Hiển thị {books.length} kết quả</p>
           </div>
           <div className="flex items-center gap-2 bg-surface-container-low p-1 rounded-xl">
             <button className="p-2 bg-surface-bright rounded-lg shadow-sm text-primary">
@@ -76,18 +104,20 @@ export default function Catalog() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {catalogBooks.map(book => (
-            <div key={book.id} className={`group cursor-pointer ${book.available === 0 ? 'opacity-80' : ''}`} onClick={() => setSelectedBook(book)}>
+          {isLoading ? (
+             <div className="col-span-full text-center py-10">Đang tải biểu mẫu sách...</div>
+          ) : books.map((book: any) => (
+            <div key={book.id} className={`group cursor-pointer ${book.status === 'Hết sách' ? 'opacity-80' : ''}`} onClick={() => setSelectedBook(book)}>
               <div className="aspect-[3/4] rounded-xl overflow-hidden bg-surface-container relative mb-4 transition-transform duration-300 group-hover:-translate-y-2 scholar-shadow">
-                <img src={book.cover} alt={book.title} className={`w-full h-full object-cover ${book.available === 0 ? 'grayscale-[0.5]' : ''}`} />
+                <img src={book.cover} alt={book.title} className={`w-full h-full object-cover ${book.status === 'Hết sách' ? 'grayscale-[0.5]' : ''}`} />
                 <div className="absolute top-3 right-3">
-                  <span className={`${book.statusColor} text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tight`}>{book.status}</span>
+                  <span className={`${book.statusColor} text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tight`}>{book.status}</span>
                 </div>
               </div>
               <h4 className="font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2">{book.title}</h4>
               <p className="text-xs text-on-surface-variant mt-1">{book.author}</p>
-              {book.available === 0 ? (
-                <p className="text-[10px] text-error mt-2 font-medium">Dự kiến trả: {book.returnDate}</p>
+              {book.status === 'Hết sách' ? (
+                <p className="text-[10px] text-error mt-2 font-medium">Hết sách</p>
               ) : (
                 <p className="text-[10px] text-outline mt-2 uppercase">Kệ: {book.location}</p>
               )}
@@ -136,20 +166,20 @@ export default function Catalog() {
                 <p className="leading-relaxed">{selectedBook.desc}</p>
               </div>
               
-              {selectedBook.available > 0 ? (
+              {selectedBook.status !== 'Hết sách' ? (
                 <div className="mt-12 pt-6 border-t border-surface-container-high flex items-center justify-between gap-6">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-outline font-bold uppercase">Trạng thái tại kho</span>
                     <span className="text-green-600 font-bold flex items-center gap-1 mt-1">
                       <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                      Sẵn sàng cho mượn ({selectedBook.available} bản)
+                      Sẵn sàng cho mượn
                     </span>
                   </div>
                   <div className="flex gap-3">
                     <button className="px-6 py-3 rounded-xl border border-outline-variant text-on-surface font-medium hover:bg-surface-container-low transition-colors">
                       Xem mục lục
                     </button>
-                    <button className="px-8 py-3 rounded-xl bg-tertiary text-white font-bold shadow-lg shadow-tertiary/20 hover:scale-[1.02] transition-transform active:scale-95">
+                    <button onClick={handleBorrow} className="px-8 py-3 rounded-xl bg-tertiary text-white font-bold shadow-lg shadow-tertiary/20 hover:scale-[1.02] transition-transform active:scale-95">
                       Mượn ngay
                     </button>
                   </div>
