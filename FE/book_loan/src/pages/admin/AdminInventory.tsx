@@ -1,15 +1,26 @@
-import React, { useState } from 'react';
-
-const mockInventory = [
-    { id: 1, title: 'Giáo trình Tâm lý học Đại cương', author: 'Nhiều tác giả', isbn: '978-604-972', category: 'Giáo trình', location: 'Khu A - Kệ 12 - Tầng 2', status: 'Sẵn có (45/50)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=100' },
-    { id: 2, title: 'Lập trình Python cơ bản', author: 'TS. Nguyễn Mạnh Hùng', isbn: '978-123-456', category: 'Công nghệ thông tin', location: 'Khu B - Kệ 05 - Tầng 4', status: 'Hết sách (0/15)', statusColor: 'bg-tertiary', cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=100' },
-    { id: 3, title: 'Tạp chí Giáo dục số 452', author: 'Bộ Giáo dục và Đào tạo', isbn: '2345-6789', category: 'Tạp chí', location: 'Khu T - Kệ 01 - Tầng 1', status: 'Sắp hết (2/10)', statusColor: 'bg-orange-400', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=100' },
-    { id: 4, title: 'Nhập môn Trí tuệ Nhân tạo', author: 'Stuart Russell', isbn: '978-223-111', category: 'Công nghệ thông tin', location: 'Khu B - Kệ 08 - Tầng 4', status: 'Sẵn có (10/12)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=100' },
-    { id: 5, title: 'Vật lý Đại cương', author: 'Alonso Finn', isbn: '978-999-888', category: 'Giáo trình', location: 'Khu A - Kệ 03 - Tầng 2', status: 'Sẵn có (100/120)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1614113489855-66422ad300a4?auto=format&fit=crop&q=80&w=100' },
-];
+import React, { useState, useEffect } from 'react';
+import { fetchBooks } from '../../api/bookApi';
+import { FormattedBook } from '../../types/book';
 
 export default function AdminInventory() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [books, setBooks] = useState<FormattedBook[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadBooks = async () => {
+            try {
+                const data = await fetchBooks();
+                setBooks(data);
+            } catch (error) {
+                // Lỗi đã được log ở API layer, có thể thêm thông báo UI ở đây
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadBooks();
+    }, []);
 
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -66,7 +77,20 @@ export default function AdminInventory() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-container">
-                            {mockInventory.map(book => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-outline text-sm">
+                                        Đang tải dữ liệu...
+                                    </td>
+                                </tr>
+                            ) : books.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-outline text-sm">
+                                        Không tìm thấy sách.
+                                    </td>
+                                </tr>
+                            ) : (
+                                books.map(book => (
                                 <tr key={book.id} className="hover:bg-slate-50/50 transition-all">
                                     <td className="px-6 py-4">
                                         <div className="w-12 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-surface-container shadow-sm">
@@ -104,7 +128,7 @@ export default function AdminInventory() {
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )))}
                         </tbody>
                     </table>
                 </div>
