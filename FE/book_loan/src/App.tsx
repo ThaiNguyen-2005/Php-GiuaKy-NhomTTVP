@@ -18,7 +18,17 @@ import AdminSettings from './pages/admin/AdminSettings';
 import Login from './pages/auth/Login';
 
 export default function App() {
-  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(null);
+  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.member_id) return 'student';
+        if (user.librarian_id) return 'admin';
+      } catch (e) {}
+    }
+    return null;
+  });
 
   const handleLogin = (role: 'student' | 'admin') => {
     setUserRole(role);
