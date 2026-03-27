@@ -204,7 +204,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-outline">Sắp xếp:</span>
-                            <select className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
+                            <select aria-label="Sap xep danh sach sach" className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
                                 <option>Mới nhất</option>
                                 <option>Tên A-Z</option>
                                 <option>Số lượng</option>

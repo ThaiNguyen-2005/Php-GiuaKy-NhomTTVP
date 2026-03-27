@@ -1,4 +1,10 @@
-import { apiRequest } from './client';
+import {
+  mockApproveBorrow,
+  mockGetAllRequests,
+  mockGetMemberRequests,
+  mockRequestBorrow,
+  mockReturnBook,
+} from './mockData';
 
 type BorrowRequest = {
   id: number;
@@ -25,37 +31,21 @@ type MemberRequest = {
 };
 
 export async function requestBorrow(memberId: number, bookId: number) {
-  return apiRequest('/borrow/request', {
-    method: 'POST',
-    body: {
-      member_id: memberId,
-      book_id: bookId,
-    },
-  });
+  return mockRequestBorrow(memberId, bookId);
 }
 
 export async function getMemberRequests(memberId: number) {
-  return apiRequest<MemberRequest[]>(`/borrow/member/${memberId}`);
+  return mockGetMemberRequests(memberId) as Promise<MemberRequest[]>;
 }
 
 export async function getAllRequests() {
-  return apiRequest<BorrowRequest[]>('/admin/borrow');
+  return mockGetAllRequests() as Promise<BorrowRequest[]>;
 }
 
 export async function approveBorrow(loanId: number, librarianId: number) {
-  return apiRequest(`/admin/borrow/${loanId}/approve`, {
-    method: 'PUT',
-    body: {
-      librarian_id: librarianId,
-    },
-  });
+  return mockApproveBorrow(loanId, librarianId);
 }
 
 export async function returnBook(loanId: number, librarianId: number) {
-  return apiRequest(`/admin/borrow/${loanId}/return`, {
-    method: 'PUT',
-    body: {
-      librarian_id: librarianId,
-    },
-  });
+  return mockReturnBook(loanId, librarianId);
 }

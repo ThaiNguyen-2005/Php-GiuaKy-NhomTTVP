@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { mockLogin, mockRegisterStudent } from './mockData';
 
 type UserRole = 'student' | 'admin';
 
@@ -13,14 +13,7 @@ function isValidEmail(value: string) {
 }
 
 export async function loginUser(role: UserRole, identifier: string, password: string) {
-  return apiRequest<AuthResponse>('/login', {
-    method: 'POST',
-    body: {
-      role,
-      identifier,
-      password,
-    },
-  });
+  return mockLogin(role, identifier, password) as Promise<AuthResponse>;
 }
 
 export async function registerStudent(
@@ -33,13 +26,5 @@ export async function registerStudent(
     throw new Error('Vui long nhap email hop le de dang ky.');
   }
 
-  return apiRequest<AuthResponse>('/register', {
-    method: 'POST',
-    body: {
-      name,
-      email: identifier,
-      password,
-      phone_number: phoneNumber,
-    },
-  });
+  return mockRegisterStudent(name, identifier, password, phoneNumber) as Promise<AuthResponse>;
 }

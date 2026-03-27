@@ -209,32 +209,32 @@ export default function AdminInventory() {
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Tên sách <span className="text-red-500">*</span></label>
-                                    <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-title" className="block text-xs font-bold text-slate-600 mb-1">Tên sách <span className="text-red-500">*</span></label>
+                                    <input id="book-title" required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Tác giả <span className="text-red-500">*</span></label>
-                                    <input required type="text" value={formData.author} onChange={e => setFormData({...formData, author: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-author" className="block text-xs font-bold text-slate-600 mb-1">Tác giả <span className="text-red-500">*</span></label>
+                                    <input id="book-author" required type="text" value={formData.author} onChange={e => setFormData({...formData, author: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">ISBN</label>
-                                    <input type="text" value={formData.isbn} onChange={e => setFormData({...formData, isbn: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-isbn" className="block text-xs font-bold text-slate-600 mb-1">ISBN</label>
+                                    <input id="book-isbn" type="text" value={formData.isbn} onChange={e => setFormData({...formData, isbn: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Phân loại <span className="text-red-500">*</span></label>
-                                    <input required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-category" className="block text-xs font-bold text-slate-600 mb-1">Phân loại <span className="text-red-500">*</span></label>
+                                    <input id="book-category" required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Vị trí (Kệ)</label>
-                                    <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-location" className="block text-xs font-bold text-slate-600 mb-1">Vị trí (Kệ)</label>
+                                    <input id="book-location" type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">Số lượng <span className="text-red-500">*</span></label>
-                                    <input required type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                    <label htmlFor="book-quantity" className="block text-xs font-bold text-slate-600 mb-1">Số lượng <span className="text-red-500">*</span></label>
+                                    <input id="book-quantity" required type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-600 mb-1">URL Ảnh bìa</label>
-                                    <input type="text" value={formData.cover} onChange={e => setFormData({...formData, cover: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="https://..." />
+                                    <label htmlFor="book-cover" className="block text-xs font-bold text-slate-600 mb-1">URL Ảnh bìa</label>
+                                    <input id="book-cover" type="text" value={formData.cover} onChange={e => setFormData({...formData, cover: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="https://..." />
                                 </div>
                             </div>
                             <div className="pt-4 flex gap-3 justify-end mt-4">

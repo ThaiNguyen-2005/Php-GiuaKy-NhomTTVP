@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { mockGetAllMembers } from './mockData';
 
 type Member = {
   member_id: number;
@@ -8,5 +8,5 @@ type Member = {
 };
 
 export async function getAllMembers() {
-  return apiRequest<Member[]>('/admin/members');
+  return mockGetAllMembers() as Promise<Member[]>;
 }

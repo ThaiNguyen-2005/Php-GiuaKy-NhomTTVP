@@ -1,0 +1,357 @@
+{
+  "info": {
+    "_postman_id": "e2f40d3b-5c9f-4f01-b9ac-4e0f5e74ac10",
+    "name": "BOOK_LOAN_MIDTERM API",
+    "description": "Collection for BOOK_LOAN_MIDTERM backend API. Generated from current BE routes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "member_id",
+      "value": "2301001"
+    },
+    {
+      "key": "librarian_id",
+      "value": "9001"
+    },
+    {
+      "key": "book_id",
+      "value": "101"
+    },
+    {
+      "key": "loan_id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"student\",\n  \"identifier\": \"student1@hcmue.edu.vn\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Student\",\n  \"email\": \"newstudent@hcmue.edu.vn\",\n  \"password\": \"123456\",\n  \"phone_number\": \"0900000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User (student only)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/{{member_id}}?role=student",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{member_id}}"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "student"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Members",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "members"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "Get Books",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/books",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "books"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Books",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/books/search?query=web",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "books",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "web"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clean Architecture\",\n  \"author\": \"Robert C. Martin\",\n  \"genre\": \"Software Engineering\",\n  \"published_year\": 2018,\n  \"cover\": \"https://example.com/cover.jpg\",\n  \"location\": \"Khu A2\",\n  \"quantity\": 3\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/books",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "books"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clean Architecture (Updated)\",\n  \"quantity\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/books/{{book_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "books",
+                "{{book_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Book",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/admin/books/{{book_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "books",
+                "{{book_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Borrow",
+      "item": [
+        {
+          "name": "Create Borrow Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"member_id\": {{member_id}},\n  \"book_id\": {{book_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/borrow/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "borrow",
+                "request"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Member Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/borrow/member/{{member_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "borrow",
+                "member",
+                "{{member_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Borrow Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/borrow",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "borrow"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Borrow",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"librarian_id\": {{librarian_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/borrow/{{loan_id}}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "borrow",
+                "{{loan_id}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Return Book",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"librarian_id\": {{librarian_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/borrow/{{loan_id}}/return",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "borrow",
+                "{{loan_id}}",
+                "return"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

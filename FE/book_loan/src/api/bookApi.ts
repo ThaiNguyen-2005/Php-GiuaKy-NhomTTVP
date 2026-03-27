@@ -1,4 +1,10 @@
-import { apiRequest } from './client';
+import {
+  mockAddBook,
+  mockDeleteBook,
+  mockFetchBooks,
+  mockSearchBooks,
+  mockUpdateBook,
+} from './mockData';
 
 type RawBook = {
   book_id: number;
@@ -59,52 +65,25 @@ function normalizeBook(book: RawBook) {
 }
 
 export async function fetchBooks() {
-  const data = await apiRequest<RawBook[]>('/books');
+  const data = (await mockFetchBooks()) as RawBook[];
   return data.map(normalizeBook);
 }
 
 export async function searchBooks(query: string) {
-  const params = new URLSearchParams({ query });
-  const data = await apiRequest<RawBook[]>(`/books/search?${params.toString()}`);
+  const data = (await mockSearchBooks(query)) as RawBook[];
   return data.map(normalizeBook);
 }
 
 export async function addBook(payload: BookPayload) {
-  const response = await apiRequest<{ book: RawBook }>('/admin/books', {
-    method: 'POST',
-    body: {
-      title: payload.title,
-      author: payload.author,
-      genre: payload.category || payload.genre,
-      published_year: payload.published_year,
-      cover: payload.cover,
-      location: payload.location,
-      quantity: payload.quantity ?? 1,
-    },
-  });
-
-  return normalizeBook(response.book);
+  const book = (await mockAddBook(payload)) as RawBook;
+  return normalizeBook(book);
 }
 
 export async function updateBook(bookId: number, payload: BookPayload) {
-  const response = await apiRequest<{ book: RawBook }>(`/admin/books/${bookId}`, {
-    method: 'PUT',
-    body: {
-      title: payload.title,
-      author: payload.author,
-      genre: payload.category || payload.genre,
-      published_year: payload.published_year,
-      cover: payload.cover,
-      location: payload.location,
-      quantity: payload.quantity,
-    },
-  });
-
-  return normalizeBook(response.book);
+  const book = (await mockUpdateBook(bookId, payload)) as RawBook;
+  return normalizeBook(book);
 }
 
 export async function deleteBook(bookId: number) {
-  return apiRequest<{ message: string }>(`/admin/books/${bookId}`, {
-    method: 'DELETE',
-  });
+  return mockDeleteBook(bookId);
 }

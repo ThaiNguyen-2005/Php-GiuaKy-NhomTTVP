@@ -61,7 +61,7 @@ export default function Catalog() {
           <section>
             <h3 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-widest">Tác giả</h3>
             <div className="relative">
-              <select className="w-full bg-surface-container border border-outline-variant rounded-xl py-2.5 px-4 text-sm appearance-none focus:ring-2 focus:ring-primary/20 outline-none">
+              <select aria-label="Loc theo tac gia" className="w-full bg-surface-container border border-outline-variant rounded-xl py-2.5 px-4 text-sm appearance-none focus:ring-2 focus:ring-primary/20 outline-none">
                 <option>Tất cả tác giả</option>
                 <option>PGS.TS Nguyễn Văn A</option>
                 <option>TS. Trần Thị B</option>
@@ -73,7 +73,7 @@ export default function Catalog() {
           <section>
             <h3 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-widest">Năm xuất bản</h3>
             <div className="relative">
-              <select className="w-full bg-surface-container border border-outline-variant rounded-xl py-2.5 px-4 text-sm appearance-none focus:ring-2 focus:ring-primary/20 outline-none">
+              <select aria-label="Loc theo nam xuat ban" className="w-full bg-surface-container border border-outline-variant rounded-xl py-2.5 px-4 text-sm appearance-none focus:ring-2 focus:ring-primary/20 outline-none">
                 <option>Tất cả năm</option>
                 <option>2024</option>
                 <option>2023</option>

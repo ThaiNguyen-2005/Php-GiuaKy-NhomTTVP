@@ -49,14 +49,14 @@ export default function AdminMembers() {
                         <input type="text" placeholder="Tra cứu theo MSSV, Email, Họ tên..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-surface-container-high rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
                     </div>
                     <div>
-                        <select className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
+                        <select aria-label="Loc theo loai the" className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
                             <option>Tất cả loại thẻ</option>
                             <option>Sinh viên</option>
                             <option>Giảng viên / Cán bộ</option>
                         </select>
                     </div>
                     <div>
-                        <select className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
+                        <select aria-label="Loc theo trang thai" className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
                             <option>Mọi trạng thái</option>
                             <option>Đang kích hoạt</option>
                             <option>Bị cảnh cáo</option>
