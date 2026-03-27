@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const newBooks = [
-  { id: 1, title: 'Tâm Lý Học Về Tiền', author: 'Morgan Housel', location: 'Khu B - Kệ 01', status: 'Còn', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400', color: 'bg-green-500' },
-  { id: 2, title: 'Lược Sử Thời Gian', author: 'Stephen Hawking', location: 'Khu A - Kệ 05', status: 'Hết', cover: 'https://images.unsplash.com/photo-1614113489855-66422ad300a4?auto=format&fit=crop&q=80&w=400', color: 'bg-error' },
-  { id: 3, title: 'Nhà Giả Kim', author: 'Paulo Coelho', location: 'Khu B - Kệ 01', status: 'Còn', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400', color: 'bg-green-500' },
-  { id: 4, title: 'Atomic Habits', author: 'James Clear', location: 'Khu C - Kệ 12', status: 'Còn', cover: 'https://images.unsplash.com/photo-1589998059171-988d887df646?auto=format&fit=crop&q=80&w=400', color: 'bg-green-500' },
-  { id: 5, title: 'Dế Mèn Phiêu Lưu Ký', author: 'Tô Hoài', location: 'Khu A - Kệ 01', status: 'Hết', cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400', color: 'bg-error' },
-];
+import { fetchBooks } from '../../api/bookApi';
+import { FormattedBook } from '../../types/book';
 
 export default function Home() {
   const navigate = useNavigate();
+  const [newBooks, setNewBooks] = useState<FormattedBook[]>([]);
+
+  useEffect(() => {
+    fetchBooks().then(data => {
+      setNewBooks(data.slice(0, 5));
+    }).catch(console.error);
+  }, []);
+
   return (
     <div className="p-8 space-y-10">
       {/* Stats Section */}
@@ -72,12 +74,12 @@ export default function Home() {
           </button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-          {newBooks.map(book => (
+          {newBooks.map((book: any) => (
              <div key={book.id} className="flex flex-col group cursor-pointer" onClick={() => navigate('/catalog')}>
               <div className="aspect-[3/4] relative rounded-lg overflow-hidden scholar-shadow transition-transform duration-300 group-hover:-translate-y-2">
                 <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
                 <div className="absolute top-3 right-3">
-                  <span className={`${book.color} text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase`}>{book.status}</span>
+                  <span className={`${book.statusColor} text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase`}>{book.status}</span>
                 </div>
               </div>
               <div className="mt-4 space-y-1">
