@@ -58,7 +58,13 @@ export default function Digital() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-max">
+<<<<<<< HEAD:FE/book_loan/src/views/Digital.tsx
        {displayDocuments.map(resource => (
+=======
+        {isLoading ? (
+            <div className="col-span-full py-12 text-center text-on-surface-variant font-medium">Đang tải tài liệu...</div>
+        ) : digitalResources.map(resource => (
+>>>>>>> 2cbd17c807ca1e36d416bb1c24c06f42474a1c59:FE/book_loan/src/pages/student/Digital.tsx
           <div key={resource.id} className="bg-surface-bright rounded-2xl p-4 scholar-shadow flex flex-col group border border-surface-container-low hover:border-primary/30 transition-colors">
             <div className="aspect-square relative rounded-xl overflow-hidden bg-surface-container mb-4">
                <img src={resource.cover} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

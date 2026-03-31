@@ -1,15 +1,74 @@
-import React, { useState } from 'react';
-
-const mockInventory = [
-    { id: 1, title: 'Giáo trình Tâm lý học Đại cương', author: 'Nhiều tác giả', isbn: '978-604-972', category: 'Giáo trình', location: 'Khu A - Kệ 12 - Tầng 2', status: 'Sẵn có (45/50)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=100' },
-    { id: 2, title: 'Lập trình Python cơ bản', author: 'TS. Nguyễn Mạnh Hùng', isbn: '978-123-456', category: 'Công nghệ thông tin', location: 'Khu B - Kệ 05 - Tầng 4', status: 'Hết sách (0/15)', statusColor: 'bg-tertiary', cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=100' },
-    { id: 3, title: 'Tạp chí Giáo dục số 452', author: 'Bộ Giáo dục và Đào tạo', isbn: '2345-6789', category: 'Tạp chí', location: 'Khu T - Kệ 01 - Tầng 1', status: 'Sắp hết (2/10)', statusColor: 'bg-orange-400', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=100' },
-    { id: 4, title: 'Nhập môn Trí tuệ Nhân tạo', author: 'Stuart Russell', isbn: '978-223-111', category: 'Công nghệ thông tin', location: 'Khu B - Kệ 08 - Tầng 4', status: 'Sẵn có (10/12)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=100' },
-    { id: 5, title: 'Vật lý Đại cương', author: 'Alonso Finn', isbn: '978-999-888', category: 'Giáo trình', location: 'Khu A - Kệ 03 - Tầng 2', status: 'Sẵn có (100/120)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1614113489855-66422ad300a4?auto=format&fit=crop&q=80&w=100' },
-];
+import React, { useState, useEffect } from 'react';
+import { fetchBooks, addBook, updateBook, deleteBook } from '../../api/bookApi';
+import { FormattedBook } from '../../types/book';
 
 export default function AdminInventory() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [books, setBooks] = useState<FormattedBook[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Modal States
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+    const [formData, setFormData] = useState({
+        id: 0, title: '', author: '', isbn: '', category: 'Giáo trình', location: '', cover: '', is_available: true, quantity: 1
+    });
+
+    const loadBooks = async () => {
+        setLoading(true);
+        try {
+            const data = await fetchBooks();
+            setBooks(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadBooks();
+    }, []);
+
+    const openAddModal = () => {
+        setModalMode('add');
+        setFormData({ id: 0, title: '', author: '', isbn: '', category: 'Giáo trình', location: '', cover: '', is_available: true, quantity: 1 });
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (book: any) => {
+        setModalMode('edit');
+        setFormData({ ...book, is_available: book.status !== 'Hết sách', quantity: book.quantity || 1 });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (confirm('Bạn có chắc chắn muốn xóa sách này?')) {
+            try {
+                await deleteBook(id);
+                loadBooks();
+            } catch (e: any) {
+                alert(e.message || 'Lỗi khi xóa');
+            }
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (modalMode === 'add') {
+                await addBook(formData);
+            } else {
+                await updateBook(formData.id, formData);
+            }
+            setIsModalOpen(false);
+            loadBooks();
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi lưu sách');
+        }
+    };
+
+
 
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -22,7 +81,7 @@ export default function AdminInventory() {
                     <button className="px-5 py-2.5 bg-surface-container text-on-surface rounded-xl font-medium hover:bg-surface-container-high transition-all flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">print</span> In mã vạch
                     </button>
-                    <button className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
+                    <button onClick={openAddModal} className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">add</span> Thêm đầu sách
                     </button>
                 </div>
@@ -66,7 +125,20 @@ export default function AdminInventory() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-container">
-                            {mockInventory.map(book => (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-outline text-sm">
+                                        Đang tải dữ liệu...
+                                    </td>
+                                </tr>
+                            ) : books.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-outline text-sm">
+                                        Không tìm thấy sách.
+                                    </td>
+                                </tr>
+                            ) : (
+                                books.map(book => (
                                 <tr key={book.id} className="hover:bg-slate-50/50 transition-all">
                                     <td className="px-6 py-4">
                                         <div className="w-12 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-surface-container shadow-sm">
@@ -92,19 +164,19 @@ export default function AdminInventory() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-1 opacity-80 hover:opacity-100 transition-opacity">
-                                            <button className="p-2 rounded-lg text-primary hover:bg-primary-container transition-all" title="Chỉnh sửa">
+                                            <button onClick={() => openEditModal(book)} className="p-2 rounded-lg text-primary hover:bg-primary-container transition-all" title="Chỉnh sửa">
                                                 <span className="material-symbols-outlined text-[18px]">edit</span>
                                             </button>
                                             <button className="p-2 rounded-lg text-tertiary hover:bg-tertiary-container transition-all" title="Báo mất">
                                                 <span className="material-symbols-outlined text-[18px]">report</span>
                                             </button>
-                                            <button className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-all" title="Xóa">
+                                            <button onClick={() => handleDelete(book.id)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-all" title="Xóa">
                                                 <span className="material-symbols-outlined text-[18px]">delete</span>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )))}
                         </tbody>
                     </table>
                 </div>
@@ -125,6 +197,54 @@ export default function AdminInventory() {
                     </div>
                 </div>
             </section>
+
+            {/* Modal Add/Edit */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+                        <div className="p-6 border-b border-surface-container flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-800">{modalMode === 'add' ? 'Thêm đầu sách mới' : 'Chỉnh sửa thông tin sách'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><span className="material-symbols-outlined">close</span></button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label htmlFor="book-title" className="block text-xs font-bold text-slate-600 mb-1">Tên sách <span className="text-red-500">*</span></label>
+                                    <input id="book-title" required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-author" className="block text-xs font-bold text-slate-600 mb-1">Tác giả <span className="text-red-500">*</span></label>
+                                    <input id="book-author" required type="text" value={formData.author} onChange={e => setFormData({...formData, author: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-isbn" className="block text-xs font-bold text-slate-600 mb-1">ISBN</label>
+                                    <input id="book-isbn" type="text" value={formData.isbn} onChange={e => setFormData({...formData, isbn: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-category" className="block text-xs font-bold text-slate-600 mb-1">Phân loại <span className="text-red-500">*</span></label>
+                                    <input id="book-category" required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-location" className="block text-xs font-bold text-slate-600 mb-1">Vị trí (Kệ)</label>
+                                    <input id="book-location" type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-quantity" className="block text-xs font-bold text-slate-600 mb-1">Số lượng <span className="text-red-500">*</span></label>
+                                    <input id="book-quantity" required type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" />
+                                </div>
+                                <div className="col-span-1">
+                                    <label htmlFor="book-cover" className="block text-xs font-bold text-slate-600 mb-1">URL Ảnh bìa</label>
+                                    <input id="book-cover" type="text" value={formData.cover} onChange={e => setFormData({...formData, cover: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="https://..." />
+                                </div>
+                            </div>
+                            <div className="pt-4 flex gap-3 justify-end mt-4">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">Hủy</button>
+                                <button type="submit" className="px-5 py-2.5 bg-primary text-white rounded-xl font-bold shadow-md shadow-primary/20 hover:opacity-90 transition-opacity">Lưu thay đổi</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

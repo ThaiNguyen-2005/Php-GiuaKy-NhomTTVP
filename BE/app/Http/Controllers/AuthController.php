@@ -46,4 +46,63 @@ class AuthController extends Controller
             'role' => $role
         ]);
     }
+
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|string|email|max:255|unique:members,email',
+            'password' => 'required|string|min:6',
+            'phone_number' => 'nullable|string|max:15',
+        ]);
+
+        $memberId = DB::table('members')->insertGetId([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+            'password' => Hash::make($request->password),
+            'join_date' => now()->toDateString(),
+        ]);
+
+        $user = DB::table('members')->where('member_id', $memberId)->first();
+        unset($user->password);
+
+        return response()->json([
+            'message' => 'Đăng ký thành công',
+            'user' => $user,
+            'role' => 'student'
+        ], 201);
+    }
+
+    public function getUser(Request $request, $id)
+    {
+        $role = $request->query('role');
+        
+        if ($role !== 'student') {
+            return response()->json(['message' => 'Không được phép lấy thông tin admin. Chỉ được phép lấy thông tin student (role=student).'], 403);
+        }
+
+        $user = DB::table('members')->where('member_id', $id)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        unset($user->password);
+
+        return response()->json([
+            'user' => $user,
+            'role' => 'student'
+        ]);
+    }
+
+    public function getAllMembers(Request $request)
+    {
+        $members = DB::table('members')->get()->map(function($member) {
+            unset($member->password);
+            return $member;
+        });
+
+        return response()->json($members);
+    }
 }

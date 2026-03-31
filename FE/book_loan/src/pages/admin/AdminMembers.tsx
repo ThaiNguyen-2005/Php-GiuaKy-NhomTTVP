@@ -1,13 +1,30 @@
-import React from 'react';
-
-const mockMembers = [
-    { id: '2056010001', name: 'Nguyễn Văn An', dept: 'CNTT', type: 'Sinh viên', email: '2056010001@student.hcmue.edu.vn', status: 'Active', statusColor: 'bg-green-100 text-green-700 border-green-200', penaltyCnt: 0 },
-    { id: '105202', name: 'Trần Thị Bình', dept: 'Toán học', type: 'Giảng viên', email: 'binhtt@hcmue.edu.vn', status: 'Active', statusColor: 'bg-green-100 text-green-700 border-green-200', penaltyCnt: 0 },
-    { id: '2056010145', name: 'Lê Hoàng Nam', dept: 'Hóa học', type: 'Sinh viên', email: '2056010145@student.hcmue.edu.vn', status: 'Blocked', statusColor: 'bg-red-100 text-red-700 border-red-200', penaltyCnt: 2 },
-    { id: '2156030221', name: 'Trần Minh Đức', dept: 'Ngữ văn', type: 'Sinh viên', email: '2156030221@student.hcmue.edu.vn', status: 'Warning', statusColor: 'bg-orange-100 text-orange-700 border-orange-200', penaltyCnt: 1 },
-];
+import React, { useState, useEffect } from 'react';
+import { getAllMembers } from '../../api/userApi';
 
 export default function AdminMembers() {
+    const [members, setMembers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        getAllMembers().then(data => {
+            const mapped = data.map((m: any) => ({
+                id: m.member_id,
+                name: m.name,
+                dept: 'Trường Đại học Sư phạm TP.HCM',
+                type: 'Sinh viên',
+                email: m.email || `${m.member_id}@student.hcmue.edu.vn`,
+                status: 'Active',
+                statusColor: 'bg-green-100 text-green-700 border-green-200',
+                penaltyCnt: 0
+            }));
+            setMembers(mapped);
+            setIsLoading(false);
+        }).catch(e => {
+            console.error(e);
+            setIsLoading(false);
+        });
+    }, []);
+
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -32,14 +49,14 @@ export default function AdminMembers() {
                         <input type="text" placeholder="Tra cứu theo MSSV, Email, Họ tên..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-surface-container-high rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
                     </div>
                     <div>
-                        <select className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
+                        <select aria-label="Loc theo loai the" className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
                             <option>Tất cả loại thẻ</option>
                             <option>Sinh viên</option>
                             <option>Giảng viên / Cán bộ</option>
                         </select>
                     </div>
                     <div>
-                        <select className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
+                        <select aria-label="Loc theo trang thai" className="w-full py-2.5 px-4 bg-white border border-surface-container-high rounded-xl text-sm text-slate-700 outline-none">
                             <option>Mọi trạng thái</option>
                             <option>Đang kích hoạt</option>
                             <option>Bị cảnh cáo</option>
@@ -62,7 +79,15 @@ export default function AdminMembers() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-container">
-                            {mockMembers.map(member => (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">Đang tải danh sách...</td>
+                                </tr>
+                            ) : members.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">Không có độc giả nào.</td>
+                                </tr>
+                            ) : members.map(member => (
                                 <tr key={member.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <span className="text-sm font-mono font-bold text-slate-700">{member.id}</span>
@@ -97,7 +122,7 @@ export default function AdminMembers() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Chỉnh sửa thông tin">
+                                        <button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Chỉnh sửa thông vịn">
                                             <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
                                         </button>
                                         <button className="p-2 text-slate-400 hover:text-tertiary hover:bg-tertiary/10 rounded-lg transition-colors" title="Khóa thẻ">

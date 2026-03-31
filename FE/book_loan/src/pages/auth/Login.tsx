@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginUser, registerStudent } from '../../api/authApi';
 
 export default function Login({ onLogin }: { onLogin: (role: 'student' | 'admin') => void }) {
     const [isLogin, setIsLogin] = useState(true);
     const [selectedRole, setSelectedRole] = useState<'student' | 'admin'>('student');
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [phone, setPhone] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -17,36 +20,27 @@ export default function Login({ onLogin }: { onLogin: (role: 'student' | 'admin'
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    role: selectedRole,
-                    identifier: identifier,
-                    password: password
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setErrorMsg(data.message || 'Đăng nhập thất bại.');
-                setIsLoading(false);
-                return;
-            }
-
-            // Success
-            onLogin(selectedRole);
-            if (selectedRole === 'admin') {
-                navigate('/admin/dashboard');
+            if (isLogin) {
+                const res = await loginUser(selectedRole, identifier, password);
+                localStorage.setItem('user', JSON.stringify(res.user));
+                onLogin(selectedRole);
+                if (selectedRole === 'admin') {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/home');
+                }
             } else {
+                if (selectedRole === 'admin') {
+                    throw new Error('Chỉ sinh viên mới được phép đăng ký tài khoản.');
+                }
+                const res = await registerStudent(name, identifier, password, phone);
+                localStorage.setItem('user', JSON.stringify(res.user));
+                onLogin('student');
                 navigate('/home');
             }
-        } catch (error) {
-            setErrorMsg('Không thể kết nối tới máy chủ (Backend chưa được bật).');
+        } catch (error: any) {
+            setErrorMsg(error.message || 'Không thể kết nối tới máy chủ.');
+        } finally {
             setIsLoading(false);
         }
     };
@@ -102,8 +96,9 @@ export default function Login({ onLogin }: { onLogin: (role: 'student' | 'admin'
                                 Đăng nhập
                             </button>
                             <button
+                                type="button"
                                 className={`pb-4 text-sm font-semibold transition-colors ${!isLogin ? 'text-primary border-b-2 border-primary' : 'text-slate-400 hover:text-slate-600'}`}
-                                onClick={() => setIsLogin(false)}
+                                onClick={() => { setIsLogin(false); setSelectedRole('student'); }}
                             >
                                 Đăng ký
                             </button>
@@ -111,28 +106,30 @@ export default function Login({ onLogin }: { onLogin: (role: 'student' | 'admin'
 
                         <form className="space-y-6" onSubmit={handleSubmit}>
                             {/* Role Selector */}
-                            <div className="flex gap-4 p-3 bg-surface-container-low rounded-lg">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="role"
-                                        checked={selectedRole === 'student'}
-                                        onChange={() => setSelectedRole('student')}
-                                        className="text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-sm font-medium">Sinh viên</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="role"
-                                        checked={selectedRole === 'admin'}
-                                        onChange={() => setSelectedRole('admin')}
-                                        className="text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-sm font-medium">Thủ thư (Admin)</span>
-                                </label>
-                            </div>
+                            {isLogin && (
+                                <div className="flex gap-4 p-3 bg-surface-container-low rounded-lg">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="role"
+                                            checked={selectedRole === 'student'}
+                                            onChange={() => setSelectedRole('student')}
+                                            className="text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm font-medium">Sinh viên</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="role"
+                                            checked={selectedRole === 'admin'}
+                                            onChange={() => setSelectedRole('admin')}
+                                            className="text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm font-medium">Thủ thư (Admin)</span>
+                                    </label>
+                                </div>
+                            )}
 
                             {/* Error Message */}
                             {errorMsg && (
@@ -142,6 +139,38 @@ export default function Login({ onLogin }: { onLogin: (role: 'student' | 'admin'
                                 </div>
                             )}
 
+                            {!isLogin && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 font-label">Họ và Tên</label>
+                                        <div className="relative">
+                                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">badge</span>
+                                            <input
+                                                type="text"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                placeholder="Nguyễn Văn A"
+                                                className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary text-slate-900 placeholder:text-slate-400 outline-none"
+                                                required={!isLogin}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 font-label">Số điện thoại</label>
+                                        <div className="relative">
+                                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">call</span>
+                                            <input
+                                                type="text"
+                                                value={phone}
+                                                onChange={(e) => setPhone(e.target.value)}
+                                                placeholder="0123456789"
+                                                className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary text-slate-900 placeholder:text-slate-400 outline-none"
+                                                required={!isLogin}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 font-label">Mã số hoặc Email</label>
                                 <div className="relative">

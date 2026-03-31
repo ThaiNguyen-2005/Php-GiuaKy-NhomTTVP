@@ -1,14 +1,62 @@
-import React, { useState } from 'react';
-
-const mockRequests = [
-    { id: 101, name: 'Nguyễn Văn An', role: 'SV', roleColor: 'bg-primary-container text-primary', code: '2056010001', book: 'Lịch sử Triết học Tây phương', bookCode: 'PHIL-102', status: 'Chờ duyệt', date: '20/10/2023 08:30' },
-    { id: 102, name: 'TS. Trần Thị Bình', role: 'GV', roleColor: 'bg-surface-container-highest text-on-surface-variant', code: '105202', book: 'Giáo dục học Đại học', bookCode: 'EDU-501', status: 'Đang mượn', date: '15/10/2023 10:15' },
-    { id: 103, name: 'Lê Hoàng Nam', role: 'SV', roleColor: 'bg-primary-container text-primary', code: '2056010145', book: 'Cấu trúc dữ liệu và Giải thuật', bookCode: 'IT-009', status: 'Quá hạn', date: '01/10/2023 16:45' },
-    { id: 104, name: 'Trần Minh Đức', role: 'SV', roleColor: 'bg-primary-container text-primary', code: '2156030221', book: 'Kinh tế Vĩ mô', bookCode: 'ECO-201', status: 'Chờ duyệt', date: '21/10/2023 09:00' },
-];
+import React, { useState, useEffect } from 'react';
+import { getAllRequests, approveBorrow, returnBook } from '../../api/borrowApi';
 
 export default function AdminRequests() {
     const [tab, setTab] = useState('ALL');
+    const [requests, setRequests] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchRequests = async () => {
+        try {
+            const data = await getAllRequests();
+            setRequests(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const getLibrarianId = () => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            return user.librarian_id;
+        }
+        return null;
+    };
+
+    const handleApprove = async (loanId: number) => {
+        const libId = getLibrarianId();
+        if (!libId) {
+            alert('Lỗi xác thực thủ thư');
+            return;
+        }
+        try {
+            await approveBorrow(loanId, libId);
+            fetchRequests(); // Refresh data
+        } catch (e: any) {
+            alert(e.message || 'Lỗi khi duyệt');
+        }
+    };
+
+    const handleReturn = async (loanId: number) => {
+        const libId = getLibrarianId();
+        if (!libId) {
+            alert('Lỗi xác thực thủ thư');
+            return;
+        }
+        try {
+            await returnBook(loanId, libId);
+            fetchRequests(); // Refresh data
+        } catch (e: any) {
+            alert(e.message || 'Lỗi khi trả sách');
+        }
+    };
 
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -56,7 +104,7 @@ export default function AdminRequests() {
                         onClick={() => setTab('BORROWED')}
                         className={`flex-1 py-4 text-sm font-bold transition-all ${tab === 'BORROWED' ? 'text-primary border-b-2 border-primary bg-white' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
                     >
-                        Đang mượn / Quá hạn
+                        Đang mượn
                     </button>
                     <button 
                         onClick={() => setTab('HISTORY')}
@@ -86,7 +134,25 @@ export default function AdminRequests() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-container">
-                            {mockRequests.map(req => (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">Đang tải dữ liệu...</td>
+                                </tr>
+                            ) : requests.filter(r => {
+                                if (tab === 'ALL') return r.status === 'Chờ duyệt';
+                                if (tab === 'BORROWED') return r.status === 'Đang mượn';
+                                if (tab === 'HISTORY') return r.status === 'Đã trả';
+                                return true;
+                            }).length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">Không có dữ liệu</td>
+                                </tr>
+                            ) : requests.filter(r => {
+                                if (tab === 'ALL') return r.status === 'Chờ duyệt';
+                                if (tab === 'BORROWED') return r.status === 'Đang mượn';
+                                if (tab === 'HISTORY') return r.status === 'Đã trả';
+                                return true;
+                            }).map(req => (
                                 <tr key={req.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <span className="text-sm font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">#{req.id}</span>
@@ -113,18 +179,18 @@ export default function AdminRequests() {
                                     <td className="px-6 py-4">
                                         {req.status === 'Chờ duyệt' && <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 border border-blue-200 rounded-md">Chờ xử lý</span>}
                                         {req.status === 'Đang mượn' && <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 border border-green-200 rounded-md">Đang mượn</span>}
-                                        {req.status === 'Quá hạn' && <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-100 border border-red-200 rounded-md">Quá hạn</span>}
+                                        {req.status === 'Đã trả' && <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 border border-slate-200 rounded-md">Đã trả</span>}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         {req.status === 'Chờ duyệt' ? (
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-sm shadow-primary/30 hover:opacity-90 transition-opacity">Giao sách</button>
+                                                <button onClick={() => handleApprove(req.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-sm shadow-primary/30 hover:opacity-90 transition-opacity">Giao sách</button>
                                                 <button className="p-1.5 rounded-lg text-slate-400 border border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all" title="Từ chối">
                                                     <span className="material-symbols-outlined text-[16px]">close</span>
                                                 </button>
                                             </div>
-                                        ) : req.status === 'Quá hạn' ? (
-                                            <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-tertiary text-white shadow-sm shadow-tertiary/30 hover:opacity-90 transition-opacity whitespace-nowrap">Đòi sách & Phạt</button>
+                                        ) : req.status === 'Đang mượn' ? (
+                                            <button onClick={() => handleReturn(req.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-tertiary text-white shadow-sm shadow-tertiary/30 hover:opacity-90 transition-opacity whitespace-nowrap">Nhận trả sách</button>
                                         ) : (
                                             <button className="px-3 py-1.5 text-xs font-semibold text-primary hover:underline">Chi tiết</button>
                                         )}

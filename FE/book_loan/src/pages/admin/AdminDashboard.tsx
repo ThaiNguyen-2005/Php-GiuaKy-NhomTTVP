@@ -1,18 +1,41 @@
-import React from 'react';
-
-const pendingRequests = [
-    { id: 1, name: 'Nguyễn Văn An', role: 'SV', roleColor: 'bg-primary-container text-primary', code: '2056010001', book: 'Lịch sử Triết học Tây phương', bookCode: 'PHIL-102', date: '20/10/2023 08:30' },
-    { id: 2, name: 'TS. Trần Thị Bình', role: 'GV', roleColor: 'bg-surface-container-highest text-on-surface-variant', code: '105202', book: 'Giáo dục học Đại học', bookCode: 'EDU-501', date: '20/10/2023 10:15' },
-    { id: 3, name: 'Lê Hoàng Nam', role: 'SV', roleColor: 'bg-primary-container text-primary', code: '2056010145', book: 'Cấu trúc dữ liệu và Giải thuật', bookCode: 'IT-009', date: '19/10/2023 16:45' },
-];
-
-const inventoryBooks = [
-    { id: 1, title: 'Giáo trình Tâm lý học Đại cương', author: 'Nhiều tác giả', isbn: '978-604-972', category: 'Giáo trình', location: 'Khu A - Kệ 12 - Tầng 2', status: 'Sẵn có (45/50)', statusColor: 'bg-green-500', cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=100' },
-    { id: 2, title: 'Lập trình Python cơ bản', author: 'TS. Nguyễn Mạnh Hùng', isbn: '978-123-456', category: 'Công nghệ thông tin', location: 'Khu B - Kệ 05 - Tầng 4', status: 'Hết sách (0/15)', statusColor: 'bg-tertiary', cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=100' },
-    { id: 3, title: 'Tạp chí Giáo dục số 452', author: 'Bộ Giáo dục và Đào tạo', isbn: '2345-6789', category: 'Tạp chí', location: 'Khu T - Kệ 01 - Tầng 1', status: 'Sắp hết (2/10)', statusColor: 'bg-orange-400', cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=100' },
-];
+import React, { useState, useEffect } from 'react';
+import { fetchBooks } from '../../api/bookApi';
+import { getAllRequests } from '../../api/borrowApi';
+import { getAllMembers } from '../../api/userApi';
 
 export default function AdminDashboard() {
+    const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+    const [inventoryBooks, setInventoryBooks] = useState<any[]>([]);
+    const [stats, setStats] = useState({ requests: 0, overdue: 0, books: 0, members: 0 });
+
+    useEffect(() => {
+        Promise.all([fetchBooks(), getAllRequests(), getAllMembers()]).then(([books, requests, members]) => {
+            setInventoryBooks(books.map((b: any) => ({
+                id: b.book_id,
+                title: b.title,
+                author: b.author,
+                isbn: `ISBN-${b.book_id}000`, 
+                category: b.category,
+                location: b.location || 'Khu A',
+                status: b.is_available ? 'Sẵn có' : 'Đang mượn',
+                statusColor: b.is_available ? 'bg-green-500' : 'bg-tertiary',
+                cover: b.cover
+            })));
+
+            const pending = requests.filter((r: any) => r.raw_status === 'pending');
+            setPendingRequests(pending.slice(0, 5)); // show top 5 latest
+            
+            const overdue = requests.filter((r: any) => r.raw_status === 'borrowed' && new Date(r.date) < new Date()).length;
+
+            setStats({
+                requests: pending.length,
+                overdue: overdue,
+                books: books.length,
+                members: members.length
+            });
+        }).catch(console.error);
+    }, []);
+
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
             {/* Dashboard Stats */}
@@ -22,28 +45,28 @@ export default function AdminDashboard() {
                         <span className="material-symbols-outlined">pending_actions</span>
                     </div>
                     <p className="text-outline text-xs font-bold uppercase tracking-wider">Yêu cầu mới</p>
-                    <h3 className="text-3xl font-bold mt-1">24</h3>
+                    <h3 className="text-3xl font-bold mt-1">{stats.requests}</h3>
                 </div>
                 <div className="bg-surface-bright p-6 rounded-xl scholar-shadow border border-surface-container-low">
                     <div className="w-12 h-12 rounded-lg bg-tertiary/10 text-tertiary flex items-center justify-center mb-4">
                         <span className="material-symbols-outlined">event_busy</span>
                     </div>
                     <p className="text-outline text-xs font-bold uppercase tracking-wider">Quá hạn</p>
-                    <h3 className="text-3xl font-bold mt-1">12</h3>
+                    <h3 className="text-3xl font-bold mt-1">{stats.overdue}</h3>
                 </div>
                 <div className="bg-surface-bright p-6 rounded-xl scholar-shadow border border-surface-container-low">
                     <div className="w-12 h-12 rounded-lg bg-green-100 text-green-700 flex items-center justify-center mb-4">
                         <span className="material-symbols-outlined">inventory</span>
                     </div>
                     <p className="text-outline text-xs font-bold uppercase tracking-wider">Tổng đầu sách</p>
-                    <h3 className="text-3xl font-bold mt-1">1,204</h3>
+                    <h3 className="text-3xl font-bold mt-1">{stats.books.toLocaleString('vi-VN')}</h3>
                 </div>
                 <div className="bg-surface-bright p-6 rounded-xl scholar-shadow border border-surface-container-low">
                     <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center mb-4">
                         <span className="material-symbols-outlined">person_search</span>
                     </div>
                     <p className="text-outline text-xs font-bold uppercase tracking-wider">Thành viên mới</p>
-                    <h3 className="text-3xl font-bold mt-1">8</h3>
+                    <h3 className="text-3xl font-bold mt-1">{stats.members.toLocaleString('vi-VN')}</h3>
                 </div>
             </div>
 
@@ -181,7 +204,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-outline">Sắp xếp:</span>
-                            <select className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
+                            <select aria-label="Sap xep danh sach sach" className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
                                 <option>Mới nhất</option>
                                 <option>Tên A-Z</option>
                                 <option>Số lượng</option>
