@@ -7,6 +7,10 @@ export default function Digital() {
   const [documents, setDocuments] = useState<any[]>([]);
 
   // 2. Dùng useEffect để tự động chạy đi lấy sách ngay khi vừa mở trang web
+  // Bộ lọc: Nếu chọn ALL thì lấy hết giỏ documents, nếu chọn định dạng thì lọc ra
+  const displayDocuments = activeFilter === 'ALL' 
+    ? documents 
+    : documents.filter(doc => doc.format === activeFilter);
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
@@ -41,7 +45,7 @@ export default function Digital() {
         </div>
       </div>
 
-      <div className="flex gap-2 p-1 bg-surface-container-low w-fit rounded-xl overflow-x-auto custom-scrollbar">
+      <div className="shrink-0 flex gap-2 p-1 bg-surface-container-low w-fit rounded-xl overflow-x-auto custom-scrollbar">
         {['ALL', 'PDF', 'EPUB', 'AUDIO', 'SLIDES'].map(filter => (
           <button 
             key={filter}
@@ -54,7 +58,7 @@ export default function Digital() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-max">
-       {documents.map(resource => (
+       {displayDocuments.map(resource => (
           <div key={resource.id} className="bg-surface-bright rounded-2xl p-4 scholar-shadow flex flex-col group border border-surface-container-low hover:border-primary/30 transition-colors">
             <div className="aspect-square relative rounded-xl overflow-hidden bg-surface-container mb-4">
                <img src={resource.cover} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -80,10 +84,10 @@ export default function Digital() {
             </div>
 
             <div className="mt-4 pt-4 border-t border-surface-container grid grid-cols-2 gap-2">
-                <button className="py-2 flex items-center justify-center gap-1.5 bg-primary-container text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition-colors">
+                <button onClick={() => alert(`Đang tải dữ liệu cuốn: ${resource.title}...`)} className="py-2 flex items-center justify-center gap-1.5 bg-primary-container text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition-colors">
                     <span className="material-symbols-outlined text-[16px]">visibility</span> Đọc
                 </button>
-                <button className="py-2 flex items-center justify-center gap-1.5 text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-lg text-xs font-bold transition-colors">
+                <button onClick={() => alert('Chức năng tải về đang được nâng cấp!')}className="py-2 flex items-center justify-center gap-1.5 text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-lg text-xs font-bold transition-colors">
                     <span className="material-symbols-outlined text-[16px]">download</span> Tải về
                 </button>
             </div>
