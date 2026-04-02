@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function Digital() {
   const [activeFilter, setActiveFilter] = useState('ALL');
+  const [isLoading, setIsLoading] = useState(true);
   // 1. Tạo cái giỏ trống để đựng sách thật lấy từ Database về
   const [documents, setDocuments] = useState<any[]>([]);
 
@@ -22,6 +23,8 @@ export default function Digital() {
         setDocuments(data);
       } catch (error) {
         console.error("Trục trặc đường truyền rồi:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -58,13 +61,9 @@ export default function Digital() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 auto-rows-max">
-<<<<<<< HEAD:FE/book_loan/src/views/Digital.tsx
-       {displayDocuments.map(resource => (
-=======
         {isLoading ? (
             <div className="col-span-full py-12 text-center text-on-surface-variant font-medium">Đang tải tài liệu...</div>
-        ) : digitalResources.map(resource => (
->>>>>>> 2cbd17c807ca1e36d416bb1c24c06f42474a1c59:FE/book_loan/src/pages/student/Digital.tsx
+        ) : displayDocuments.map(resource => (
           <div key={resource.id} className="bg-surface-bright rounded-2xl p-4 scholar-shadow flex flex-col group border border-surface-container-low hover:border-primary/30 transition-colors">
             <div className="aspect-square relative rounded-xl overflow-hidden bg-surface-container mb-4">
                <img src={resource.cover} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -78,8 +77,7 @@ export default function Digital() {
             <div className="flex-1 flex flex-col">
               <span className="text-[10px] font-bold text-outline uppercase tracking-widest">{resource.type}</span>
               <h3 className="font-bold text-sm text-on-surface mt-1 line-clamp-2 leading-snug group-hover:text-primary transition-colors">{resource.title}</h3>
-              
-              { }
+
               <div className="flex items-center justify-between mt-1.5">
                 <p className="text-xs text-on-surface-variant line-clamp-1">{resource.author}</p>
                 <div className="flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-md">
