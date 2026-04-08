@@ -1,66 +1,62 @@
-import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import UserLayout from './layouts/UserLayout';
-import AdminLayout from './layouts/AdminLayout';
-import Home from './pages/student/Home';
-import Catalog from './pages/student/Catalog';
-import MyBooks from './pages/student/MyBooks';
-import Digital from './pages/student/Digital';
-import StudentRequests from './pages/student/StudentRequests';
-import History from './pages/student/History';
-import StudentSettings from './pages/student/StudentSettings';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminInventory from './pages/admin/AdminInventory';
-import AdminRequests from './pages/admin/AdminRequests';
-import AdminMembers from './pages/admin/AdminMembers';
-import AdminReports from './pages/admin/AdminReports';
-import AdminSettings from './pages/admin/AdminSettings';
-import Login from './pages/auth/Login';
+import React, { Suspense, lazy } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuth } from './auth/AuthContext';
+import PageLoader from './components/PageLoader';
+import ProtectedRoute from './components/ProtectedRoute';
+
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const UserLayout = lazy(() => import('./layouts/UserLayout'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
+const AdminMembers = lazy(() => import('./pages/admin/AdminMembers'));
+const AdminReports = lazy(() => import('./pages/admin/AdminReports'));
+const AdminRequests = lazy(() => import('./pages/admin/AdminRequests'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const Catalog = lazy(() => import('./pages/student/Catalog'));
+const Digital = lazy(() => import('./pages/student/Digital'));
+const History = lazy(() => import('./pages/student/History'));
+const Home = lazy(() => import('./pages/student/Home'));
+const MyBooks = lazy(() => import('./pages/student/MyBooks'));
+const StudentRequests = lazy(() => import('./pages/student/StudentRequests'));
+const StudentSettings = lazy(() => import('./pages/student/StudentSettings'));
 
 export default function App() {
-  const [userRole, setUserRole] = useState<'student' | 'admin' | null>(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.member_id) return 'student';
-        if (user.librarian_id) return 'admin';
-      } catch (e) {}
-    }
-    return null;
-  });
-
-  const handleLogin = (role: 'student' | 'admin') => {
-    setUserRole(role);
-  };
+  const { isAuthenticated, role } = useAuth();
+  const homePath = role === 'admin' ? '/admin/dashboard' : '/home';
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login onLogin={handleLogin} />} />
-      
-      {/* Student Routes */}
-<Route path="/" element={<UserLayout />} >        <Route index element={<Navigate to="/home" replace />} />
-        <Route path="home" element={<Home />} />
-        <Route path="catalog" element={<Catalog />} />
-        <Route path="my-books" element={<MyBooks />} />
-        <Route path="digital" element={<Digital />} />
-        <Route path="requests" element={<StudentRequests />} />
-        <Route path="history" element={<History />} />
-        <Route path="settings" element={<StudentSettings />} />
-      </Route>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to={homePath} replace /> : <Login />} />
 
-      {/* Admin Routes */}
-      <Route path="/admin" element={userRole === 'admin' ? <AdminLayout /> : <Navigate to="/login" />}>
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="inventory" element={<AdminInventory />} />
-        <Route path="requests" element={<AdminRequests />} />
-        <Route path="members" element={<AdminMembers />} />
-        <Route path="reports" element={<AdminReports />} />
-        <Route path="settings" element={<AdminSettings />} />
-      </Route>
+        <Route element={<ProtectedRoute role="student" />}>
+          <Route path="/" element={<UserLayout />}>
+            <Route index element={<Navigate to="/home" replace />} />
+            <Route path="home" element={<Home />} />
+            <Route path="catalog" element={<Catalog />} />
+            <Route path="my-books" element={<MyBooks />} />
+            <Route path="digital" element={<Digital />} />
+            <Route path="requests" element={<StudentRequests />} />
+            <Route path="history" element={<History />} />
+            <Route path="settings" element={<StudentSettings />} />
+          </Route>
+        </Route>
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        <Route element={<ProtectedRoute role="admin" />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="inventory" element={<AdminInventory />} />
+            <Route path="requests" element={<AdminRequests />} />
+            <Route path="members" element={<AdminMembers />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to={isAuthenticated ? homePath : '/login'} replace />} />
+      </Routes>
+    </Suspense>
   );
 }

@@ -2,22 +2,99 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class BookSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        \Illuminate\Support\Facades\DB::table('books')->insert([
-            ['book_id' => 1, 'title' => 'Giáo trình Tâm lý học Đại cương', 'author' => 'Nhiều tác giả', 'genre' => 'Giáo trình', 'published_year' => 2022, 'is_available' => 1],
-            ['book_id' => 2, 'title' => 'Lập trình Python cơ bản', 'author' => 'TS. Nguyễn Mạnh Hùng', 'genre' => 'Công nghệ thông tin', 'published_year' => 2021, 'is_available' => 0],
-            ['book_id' => 3, 'title' => 'Tạp chí Giáo dục số 452', 'author' => 'Bộ Giáo dục và Đào tạo', 'genre' => 'Tạp chí', 'published_year' => 2023, 'is_available' => 1],
-            ['book_id' => 4, 'title' => 'Nhập môn Trí tuệ Nhân tạo', 'author' => 'Stuart Russell', 'genre' => 'Công nghệ thông tin', 'published_year' => 2020, 'is_available' => 1],
-            ['book_id' => 5, 'title' => 'Vật lý Đại cương', 'author' => 'Alonso Finn', 'genre' => 'Giáo trình', 'published_year' => 2018, 'is_available' => 1],
+        DB::table('books')->insert([
+            [
+                'book_id' => 1,
+                'title' => 'Giao trinh Tam ly hoc Dai cuong',
+                'author' => 'Nhieu tac gia',
+                'genre' => 'Giao trinh',
+                'published_year' => 2022,
+                'is_available' => 1,
+                'cover' => 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+                'location' => 'Ke A1',
+                'is_digital' => 1,
+                'resource_type' => 'Giao trinh',
+                'file_format' => 'PDF',
+                'file_size' => '5.2 MB',
+                'download_count' => 1250,
+                'total_quantity' => 4,
+                'available_quantity' => 3,
+            ],
+            [
+                'book_id' => 2,
+                'title' => 'Lap trinh Python co ban',
+                'author' => 'TS. Nguyen Manh Hung',
+                'genre' => 'Cong nghe thong tin',
+                'published_year' => 2021,
+                'is_available' => 1,
+                'cover' => 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=600',
+                'location' => 'Ke B2',
+                'is_digital' => 1,
+                'resource_type' => 'Tai lieu',
+                'file_format' => 'EPUB',
+                'file_size' => '3.1 MB',
+                'download_count' => 840,
+                'total_quantity' => 3,
+                'available_quantity' => 1,
+            ],
+            [
+                'book_id' => 3,
+                'title' => 'Tap chi Giao duc so 452',
+                'author' => 'Bo Giao duc va Dao tao',
+                'genre' => 'Tap chi',
+                'published_year' => 2023,
+                'is_available' => 1,
+                'cover' => 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600',
+                'location' => 'Ke C1',
+                'is_digital' => 1,
+                'resource_type' => 'Bai giang',
+                'file_format' => 'SLIDES',
+                'file_size' => '12.5 MB',
+                'download_count' => 450,
+                'total_quantity' => 5,
+                'available_quantity' => 5,
+            ],
+            [
+                'book_id' => 4,
+                'title' => 'Nhap mon Tri tue Nhan tao',
+                'author' => 'Stuart Russell',
+                'genre' => 'Cong nghe thong tin',
+                'published_year' => 2020,
+                'is_available' => 1,
+                'cover' => 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&q=80&w=600',
+                'location' => 'Ke D4',
+                'is_digital' => 1,
+                'resource_type' => 'Sach noi',
+                'file_format' => 'AUDIO',
+                'file_size' => '45.0 MB',
+                'download_count' => 3200,
+                'total_quantity' => 6,
+                'available_quantity' => 6,
+            ],
+            [
+                'book_id' => 5,
+                'title' => 'Vat ly Dai cuong',
+                'author' => 'Alonso Finn',
+                'genre' => 'Giao trinh',
+                'published_year' => 2018,
+                'is_available' => 1,
+                'cover' => 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+                'location' => 'Ke E2',
+                'is_digital' => 1,
+                'resource_type' => 'Tham khao',
+                'file_format' => 'PDF',
+                'file_size' => '8.4 MB',
+                'download_count' => 2100,
+                'total_quantity' => 4,
+                'available_quantity' => 4,
+            ],
         ]);
     }
 }

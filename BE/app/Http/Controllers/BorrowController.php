@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Book;
+use App\Models\Borrowing;
 use Illuminate\Http\Request;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
 
 class BorrowController extends Controller
@@ -10,149 +13,184 @@ class BorrowController extends Controller
     public function requestBorrow(Request $request)
     {
         $request->validate([
-            'member_id' => 'required|integer|exists:members,member_id',
             'book_id' => 'required|integer|exists:books,book_id',
         ]);
 
-        $book = DB::table('books')->where('book_id', $request->book_id)->first();
+        $member = $request->user();
+        $book = Book::query()->findOrFail($request->integer('book_id'));
+
         if ($book->available_quantity <= 0) {
-            return response()->json(['message' => 'Sách hiện không có sẵn để mượn (đã hết)'], 400);
+            return response()->json(['message' => 'Sach hien khong co san de muon.'], 422);
         }
 
-        $loanId = DB::table('borrowing')->insertGetId([
-            'member_id' => $request->member_id,
-            'book_id' => $request->book_id,
+        $activeLoanCount = Borrowing::query()
+            ->where('member_id', $member->member_id)
+            ->whereIn('status', ['pending', 'borrowed'])
+            ->count();
+
+        if ($activeLoanCount >= 5) {
+            return response()->json(['message' => 'Ban da dat gioi han 5 yeu cau dang hoat dong.'], 422);
+        }
+
+        $duplicateLoan = Borrowing::query()
+            ->where('member_id', $member->member_id)
+            ->where('book_id', $book->book_id)
+            ->whereIn('status', ['pending', 'borrowed'])
+            ->exists();
+
+        if ($duplicateLoan) {
+            return response()->json(['message' => 'Ban da co mot yeu cau hoac phieu muon cho cuon sach nay.'], 422);
+        }
+
+        $loan = Borrowing::query()->create([
+            'member_id' => $member->member_id,
+            'book_id' => $book->book_id,
             'status' => 'pending',
             'borrow_date' => now()->toDateString(),
         ]);
 
         return response()->json([
-            'message' => 'Yêu cầu mượn sách đã được gửi',
-            'loan' => DB::table('borrowing')->where('loan_id', $loanId)->first()
+            'message' => 'Yeu cau muon sach da duoc gui.',
+            'loan' => $loan,
         ], 201);
     }
 
-    public function approveBorrow(Request $request, $loanId)
+    public function approveBorrow(Request $request, int $loanId)
     {
-        $request->validate([
-            'librarian_id' => 'required|integer|exists:librarians,librarian_id',
-        ]);
+        $librarian = $request->user();
 
-        $loan = DB::table('borrowing')->where('loan_id', $loanId)->first();
-        if (!$loan) {
-            return response()->json(['message' => 'Không tìm thấy yêu cầu mượn'], 404);
-        }
+        $loan = DB::transaction(function () use ($loanId, $librarian) {
+            $loan = Borrowing::query()->lockForUpdate()->find($loanId);
 
-        if ($loan->status !== 'pending') {
-            return response()->json(['message' => 'Yêu cầu mượn sách này đã được xử lý'], 400);
-        }
+            if (! $loan) {
+                throw new HttpResponseException(response()->json(['message' => 'Khong tim thay yeu cau muon.'], 404));
+            }
 
-        DB::table('borrowing')->where('loan_id', $loanId)->update([
-            'status' => 'borrowed',
-            'librarian_id' => $request->librarian_id,
-            'borrow_date' => now()->toDateString(),
-        ]);
+            if ($loan->status !== 'pending') {
+                throw new HttpResponseException(response()->json(['message' => 'Yeu cau nay da duoc xu ly.'], 422));
+            }
 
-        DB::table('books')->where('book_id', $loan->book_id)->decrement('available_quantity', 1);
-        DB::table('books')->where('book_id', $loan->book_id)
-            ->where('available_quantity', '<=', 0)
-            ->update(['is_available' => false]);
+            $book = Book::query()->lockForUpdate()->find($loan->book_id);
+
+            if (! $book || $book->available_quantity <= 0) {
+                throw new HttpResponseException(response()->json(['message' => 'Sach hien khong con ban sao kha dung.'], 422));
+            }
+
+            $loan->status = 'borrowed';
+            $loan->librarian_id = $librarian->librarian_id;
+            $loan->due_date = now()->addDays(14)->toDateString();
+            $loan->save();
+
+            $book->available_quantity = max(0, $book->available_quantity - 1);
+            $book->is_available = $book->available_quantity > 0;
+            $book->save();
+
+            return $loan->fresh(['book', 'member']);
+        });
 
         return response()->json([
-            'message' => 'Đã duyệt yêu cầu mượn sách',
-            'loan' => DB::table('borrowing')->where('loan_id', $loanId)->first()
+            'message' => 'Da duyet yeu cau muon sach.',
+            'loan' => $loan,
         ]);
     }
 
-    public function returnBook(Request $request, $loanId)
+    public function returnBook(Request $request, int $loanId)
     {
-        $request->validate([
-            'librarian_id' => 'required|integer|exists:librarians,librarian_id',
-        ]);
+        $loan = DB::transaction(function () use ($loanId) {
+            $loan = Borrowing::query()->lockForUpdate()->find($loanId);
 
-        $loan = DB::table('borrowing')->where('loan_id', $loanId)->first();
-        if (!$loan) {
-            return response()->json(['message' => 'Không tìm thấy yêu cầu mượn'], 404);
-        }
+            if (! $loan) {
+                throw new HttpResponseException(response()->json(['message' => 'Khong tim thay phieu muon.'], 404));
+            }
 
-        if ($loan->status !== 'borrowed') {
-            return response()->json(['message' => 'Yêu cầu mượn sách này chưa được duyệt hoặc đã trả'], 400);
-        }
+            if ($loan->status !== 'borrowed') {
+                throw new HttpResponseException(response()->json(['message' => 'Chi co the tra sach dang o trang thai borrowed.'], 422));
+            }
 
-        DB::table('borrowing')->where('loan_id', $loanId)->update([
-            'status' => 'returned',
-            'return_date' => now()->toDateString(),
-        ]);
+            $book = Book::query()->lockForUpdate()->find($loan->book_id);
 
-        DB::table('books')->where('book_id', $loan->book_id)->increment('available_quantity', 1);
-        DB::table('books')->where('book_id', $loan->book_id)->update(['is_available' => true]);
+            $loan->status = 'returned';
+            $loan->return_date = now()->toDateString();
+            $loan->save();
+
+            if ($book) {
+                $book->available_quantity += 1;
+                $book->is_available = true;
+                $book->save();
+            }
+
+            return $loan->fresh(['book', 'member']);
+        });
 
         return response()->json([
-            'message' => 'Đã xử lý trả sách',
-            'loan' => DB::table('borrowing')->where('loan_id', $loanId)->first()
+            'message' => 'Da xu ly tra sach.',
+            'loan' => $loan,
         ]);
     }
 
-    public function getAllRequests(Request $request)
+    public function getAllRequests()
     {
-        $requests = DB::table('borrowing')
-            ->join('members', 'borrowing.member_id', '=', 'members.member_id')
-            ->join('books', 'borrowing.book_id', '=', 'books.book_id')
-            ->select(
-                'borrowing.loan_id as id',
-                'members.name as name',
-                'members.member_id as code',
-                'books.title as book',
-                'books.book_id as bookCode',
-                'borrowing.status',
-                DB::raw('COALESCE(borrowing.return_date, borrowing.borrow_date) as date')
-            )
-            ->orderBy('borrowing.loan_id', 'desc')
+        $requests = Borrowing::query()
+            ->with(['member', 'book'])
+            ->latest('loan_id')
             ->get();
 
-        // Map status to Vietnamese UI status if needed or handle in FE.
-        $mappedRequests = $requests->map(function ($req) {
-            $statusText = 'Chờ duyệt';
-            if ($req->status === 'borrowed') $statusText = 'Đang mượn';
-            if ($req->status === 'returned') $statusText = 'Đã trả';
-            if ($req->status === 'rejected') $statusText = 'Từ chối';
-            // Simple logic for overdue (Quá hạn) could be added here if needed.
-
+        $mappedRequests = $requests->map(function (Borrowing $request) {
             return [
-                'id' => $req->id,
-                'name' => $req->name,
+                'id' => $request->loan_id,
+                'name' => $request->member?->name ?? 'Khong ro',
                 'role' => 'SV',
                 'roleColor' => 'bg-primary-container text-primary',
-                'code' => $req->code,
-                'book' => $req->book,
-                'bookCode' => $req->bookCode,
-                'status' => $statusText,
-                'date' => $req->date,
-                'raw_status' => $req->status
+                'code' => $request->member?->member_id,
+                'book' => $request->book?->title ?? 'Khong ro',
+                'bookCode' => $request->book?->book_id,
+                'status' => $this->mapStatusLabel($request->status),
+                'date' => $request->return_date?->toDateString()
+                    ?? $request->due_date?->toDateString()
+                    ?? $request->borrow_date?->toDateString(),
+                'requested_at' => $request->borrow_date?->toDateString(),
+                'due_date' => $request->due_date?->toDateString(),
+                'return_date' => $request->return_date?->toDateString(),
+                'raw_status' => $request->status,
             ];
         });
 
         return response()->json($mappedRequests);
     }
 
-    public function getMemberRequests(Request $request, $memberId)
+    public function getMemberRequests(Request $request)
     {
-        $requests = DB::table('borrowing')
-            ->join('books', 'borrowing.book_id', '=', 'books.book_id')
-            ->where('borrowing.member_id', $memberId)
-            ->select(
-                'borrowing.loan_id as id',
-                'books.title as bookTitle',
-                'books.author',
-                'books.cover',
-                'books.genre as category',
-                'borrowing.status',
-                'borrowing.borrow_date',
-                'borrowing.return_date'
-            )
-            ->orderBy('borrowing.loan_id', 'desc')
+        $requests = Borrowing::query()
+            ->with('book')
+            ->where('member_id', $request->user()->member_id)
+            ->latest('loan_id')
             ->get();
 
-        return response()->json($requests);
+        return response()->json(
+            $requests->map(function (Borrowing $request) {
+                return [
+                    'id' => $request->loan_id,
+                    'bookTitle' => $request->book?->title ?? 'Khong ro',
+                    'author' => $request->book?->author ?? 'Khong ro',
+                    'cover' => $request->book?->cover,
+                    'category' => $request->book?->genre,
+                    'status' => $request->status,
+                    'borrow_date' => $request->borrow_date?->toDateString(),
+                    'due_date' => $request->due_date?->toDateString(),
+                    'return_date' => $request->return_date?->toDateString(),
+                ];
+            })
+        );
+    }
+
+    private function mapStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Cho duyet',
+            'borrowed' => 'Dang muon',
+            'returned' => 'Da tra',
+            'rejected' => 'Tu choi',
+            default => $status,
+        };
     }
 }

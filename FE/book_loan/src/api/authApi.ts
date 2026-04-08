@@ -1,11 +1,11 @@
-import { mockLogin, mockRegisterStudent } from './mockData';
-
-type UserRole = 'student' | 'admin';
+import type { AuthSession, UserRole } from '../auth/storage';
+import { apiRequest } from './client';
 
 type AuthResponse = {
   message: string;
-  user: Record<string, unknown>;
+  user: AuthSession['user'];
   role: UserRole;
+  token: string;
 };
 
 function isValidEmail(value: string) {
@@ -13,7 +13,10 @@ function isValidEmail(value: string) {
 }
 
 export async function loginUser(role: UserRole, identifier: string, password: string) {
-  return mockLogin(role, identifier, password) as Promise<AuthResponse>;
+  return apiRequest<AuthResponse>('/login', {
+    method: 'POST',
+    body: { role, identifier, password },
+  });
 }
 
 export async function registerStudent(
@@ -26,5 +29,20 @@ export async function registerStudent(
     throw new Error('Vui long nhap email hop le de dang ky.');
   }
 
-  return mockRegisterStudent(name, identifier, password, phoneNumber) as Promise<AuthResponse>;
+  return apiRequest<AuthResponse>('/register', {
+    method: 'POST',
+    body: {
+      name,
+      email: identifier,
+      password,
+      password_confirmation: password,
+      phone_number: phoneNumber,
+    },
+  });
+}
+
+export async function logoutUser() {
+  return apiRequest<{ message: string }>('/logout', {
+    method: 'POST',
+  });
 }

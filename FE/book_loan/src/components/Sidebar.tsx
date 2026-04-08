@@ -1,19 +1,22 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 const navItems = [
-  { path: '/home', icon: 'home', label: 'Trang chủ' },
-  { path: '/catalog', icon: 'search', label: 'Tìm kiếm sách' },
-  { path: '/digital', icon: 'menu_book', label: 'Tài liệu số' },
-  { path: '/my-books', icon: 'library_books', label: 'Sách của tôi' },
-  { path: '/requests', icon: 'pending_actions', label: 'Yêu cầu mượn' },
-  { path: '/history', icon: 'history', label: 'Lịch sử' },
+  { path: '/home', icon: 'home', label: 'Trang chu' },
+  { path: '/catalog', icon: 'search', label: 'Tim kiem sach' },
+  { path: '/digital', icon: 'menu_book', label: 'Tai lieu so' },
+  { path: '/my-books', icon: 'library_books', label: 'Sach cua toi' },
+  { path: '/requests', icon: 'pending_actions', label: 'Yeu cau muon' },
+  { path: '/history', icon: 'history', label: 'Lich su' },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -62,14 +65,14 @@ export default function Sidebar() {
           }
         >
           <span className="material-symbols-outlined">settings</span>
-          <span className="text-sm">Cài đặt</span>
+          <span className="text-sm">Cai dat</span>
         </NavLink>
         <button 
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-error hover:bg-red-50"
         >
           <span className="material-symbols-outlined">logout</span>
-          <span className="text-sm font-medium">Đăng xuất</span>
+          <span className="text-sm font-medium">Dang xuat</span>
         </button>
       </div>
     </aside>

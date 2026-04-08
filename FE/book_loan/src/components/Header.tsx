@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { searchBooks } from '../api/bookApi';
 
 export default function Header() {
     const navigate = useNavigate();
+    const { user, role } = useAuth();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -11,11 +13,8 @@ export default function Header() {
     const timeoutRef = useRef<any>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
-    const user = (() => {
-        try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
-    })();
-    const userName = user.name || 'Người dùng';
-    const userRole = user.member_id ? 'Sinh viên' : 'Quản trị viên';
+    const userName = user?.name || 'Nguoi dung';
+    const userRole = role === 'admin' ? 'Quan tri vien' : 'Sinh vien';
 
     useEffect(() => {
         if (!query.trim()) {
@@ -59,14 +58,13 @@ export default function Header() {
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onFocus={() => results.length > 0 && setShowDropdown(true)}
-                        placeholder="Tìm kiếm tài liệu, giáo trình..."
+                        placeholder="Tim kiem tai lieu, giao trinh..."
                         className="w-full bg-surface-container border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-outline transition-all outline-none"
                     />
                     {isSearching && (
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-outline">Đang tìm...</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-outline">Dang tim...</span>
                     )}
 
-                    {/* Dropdown */}
                     {showDropdown && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-surface-container-low overflow-hidden z-50">
                             {results.length > 0 ? (
@@ -91,12 +89,12 @@ export default function Header() {
                                         onClick={() => { navigate('/catalog'); setShowDropdown(false); setQuery(''); }}
                                         className="w-full px-4 py-3 text-xs font-bold text-primary text-center border-t border-surface-container-low hover:bg-primary/5 transition-colors"
                                     >
-                                        Xem tất cả kết quả trong Danh mục →
+                                        Xem tat ca ket qua trong Danh muc →
                                     </button>
                                 </>
                             ) : query.trim() ? (
                                 <div className="px-4 py-6 text-center text-sm text-on-surface-variant">
-                                    Không tìm thấy sách cho "<span className="font-bold text-on-surface">{query}</span>"
+                                    Khong tim thay sach cho "<span className="font-bold text-on-surface">{query}</span>"
                                 </div>
                             ) : null}
                         </div>
@@ -106,7 +104,7 @@ export default function Header() {
 
             <div className="flex items-center gap-6">
                 <div className="hidden md:flex flex-col items-end">
-                    <span className="text-xs font-semibold text-primary tracking-wider uppercase">Thư viện số HCMUE</span>
+                    <span className="text-xs font-semibold text-primary tracking-wider uppercase">Thu vien so HCMUE</span>
                 </div>
                 <div className="flex items-center gap-4">
                     <button className="relative p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">

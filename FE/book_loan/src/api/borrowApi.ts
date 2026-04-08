@@ -1,12 +1,6 @@
-import {
-  mockApproveBorrow,
-  mockGetAllRequests,
-  mockGetMemberRequests,
-  mockRequestBorrow,
-  mockReturnBook,
-} from './mockData';
+import { apiRequest } from './client';
 
-type BorrowRequest = {
+export type BorrowRequest = {
   id: number;
   name: string;
   role: string;
@@ -16,36 +10,47 @@ type BorrowRequest = {
   bookCode: string;
   status: string;
   date: string;
+  requested_at?: string;
+  due_date?: string | null;
+  return_date?: string | null;
   raw_status: string;
 };
 
-type MemberRequest = {
+export type MemberRequest = {
   id: number;
   bookTitle: string;
   author: string;
-  cover?: string;
-  category?: string;
+  cover?: string | null;
+  category?: string | null;
   status: string;
   borrow_date?: string;
+  due_date?: string | null;
   return_date?: string | null;
 };
 
-export async function requestBorrow(memberId: number, bookId: number) {
-  return mockRequestBorrow(memberId, bookId);
+export async function requestBorrow(bookId: number) {
+  return apiRequest<{ message: string; loan: unknown }>('/requests', {
+    method: 'POST',
+    body: { book_id: bookId },
+  });
 }
 
-export async function getMemberRequests(memberId: number) {
-  return mockGetMemberRequests(memberId) as Promise<MemberRequest[]>;
+export async function getMyRequests() {
+  return apiRequest<MemberRequest[]>('/requests/me');
 }
 
 export async function getAllRequests() {
-  return mockGetAllRequests() as Promise<BorrowRequest[]>;
+  return apiRequest<BorrowRequest[]>('/requests');
 }
 
-export async function approveBorrow(loanId: number, librarianId: number) {
-  return mockApproveBorrow(loanId, librarianId);
+export async function approveBorrow(loanId: number) {
+  return apiRequest<{ message: string; loan: unknown }>(`/requests/${loanId}/approve`, {
+    method: 'POST',
+  });
 }
 
-export async function returnBook(loanId: number, librarianId: number) {
-  return mockReturnBook(loanId, librarianId);
+export async function returnBook(loanId: number) {
+  return apiRequest<{ message: string; loan: unknown }>(`/requests/${loanId}/return`, {
+    method: 'POST',
+  });
 }

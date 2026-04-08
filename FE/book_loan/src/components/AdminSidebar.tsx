@@ -1,18 +1,21 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 const navItems = [
-  { path: '/admin/dashboard', icon: 'dashboard', label: 'Tổng quan' },
-  { path: '/admin/inventory', icon: 'inventory', label: 'Quản lý kho sách' },
-  { path: '/admin/requests', icon: 'pending_actions', label: 'Duyệt mượn sách' },
-  { path: '/admin/members', icon: 'group', label: 'Thành viên' },
-  { path: '/admin/reports', icon: 'bar_chart', label: 'Báo cáo thông kê' },
+  { path: '/admin/dashboard', icon: 'dashboard', label: 'Tong quan' },
+  { path: '/admin/inventory', icon: 'inventory', label: 'Quan ly kho sach' },
+  { path: '/admin/requests', icon: 'pending_actions', label: 'Duyet muon sach' },
+  { path: '/admin/members', icon: 'group', label: 'Thanh vien' },
+  { path: '/admin/reports', icon: 'bar_chart', label: 'Bao cao thong ke' },
 ];
 
 export default function AdminSidebar() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -61,14 +64,14 @@ export default function AdminSidebar() {
           }
         >
           <span className="material-symbols-outlined">settings</span>
-          <span className="text-sm">Cài đặt hệ thống</span>
+          <span className="text-sm">Cai dat he thong</span>
         </NavLink>
         <button 
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-red-400 hover:bg-red-500/10 mt-1"
         >
           <span className="material-symbols-outlined">logout</span>
-          <span className="text-sm font-medium">Đăng xuất</span>
+          <span className="text-sm font-medium">Dang xuat</span>
         </button>
       </div>
     </aside>

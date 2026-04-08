@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Librarian;
+use App\Models\Member;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -17,33 +19,33 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $role = $request->role;
-        $identifier = $request->identifier;
-        $password = $request->password;
+        $role = $request->string('role')->value();
+        $identifier = $request->string('identifier')->trim()->value();
+        $password = $request->string('password')->value();
 
-        $table = $role === 'admin' ? 'librarians' : 'members';
-        $idColumn = $role === 'admin' ? 'librarian_id' : 'member_id';
+        $user = $role === 'admin'
+            ? Librarian::query()
+                ->where('librarian_id', $identifier)
+                ->orWhere('email', $identifier)
+                ->first()
+            : Member::query()
+                ->where('member_id', $identifier)
+                ->orWhere('email', $identifier)
+                ->first();
 
-        // Find user by ID or Email
-        $user = DB::table($table)
-            ->where($idColumn, $identifier)
-            ->orWhere('email', $identifier)
-            ->first();
-
-        // Check if user exists and password matches
         if (! $user || ! Hash::check($password, $user->password)) {
             return response()->json([
-                'message' => 'Tài khoản hoặc mật khẩu không chính xác.'
+                'message' => 'Tai khoan hoac mat khau khong chinh xac.',
             ], 401);
         }
 
-        // Return user info excluding password
-        unset($user->password);
+        $token = $user->createToken($user->getRoleName().'-session', ['role:'.$user->getRoleName()])->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng nhập thành công',
+            'message' => 'Dang nhap thanh cong',
             'user' => $user,
-            'role' => $role
+            'role' => $user->getRoleName(),
+            'token' => $token,
         ]);
     }
 
@@ -51,57 +53,91 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|string|email|max:255|unique:members,email',
-            'password' => 'required|string|min:6',
+            'email' => 'required|string|email|max:255|unique:members,email',
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'phone_number' => 'nullable|string|max:15',
         ]);
 
-        $memberId = DB::table('members')->insertGetId([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone_number' => $request->phone_number,
-            'password' => Hash::make($request->password),
+        $user = Member::query()->create([
+            'name' => $request->string('name')->value(),
+            'email' => $request->string('email')->value(),
+            'phone_number' => $request->string('phone_number')->value() ?: null,
+            'password' => $request->string('password')->value(),
             'join_date' => now()->toDateString(),
         ]);
 
-        $user = DB::table('members')->where('member_id', $memberId)->first();
-        unset($user->password);
+        $token = $user->createToken('student-session', ['role:student'])->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng ký thành công',
+            'message' => 'Dang ky thanh cong',
             'user' => $user,
-            'role' => 'student'
+            'role' => 'student',
+            'token' => $token,
         ], 201);
     }
 
-    public function getUser(Request $request, $id)
+    public function me(Request $request)
     {
-        $role = $request->query('role');
-        
-        if ($role !== 'student') {
-            return response()->json(['message' => 'Không được phép lấy thông tin admin. Chỉ được phép lấy thông tin student (role=student).'], 403);
-        }
-
-        $user = DB::table('members')->where('member_id', $id)->first();
-
-        if (!$user) {
-            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
-        }
-
-        unset($user->password);
+        $user = $request->user();
 
         return response()->json([
             'user' => $user,
-            'role' => 'student'
+            'role' => method_exists($user, 'getRoleName') ? $user->getRoleName() : null,
         ]);
     }
 
-    public function getAllMembers(Request $request)
+    public function updateProfile(Request $request)
     {
-        $members = DB::table('members')->get()->map(function($member) {
-            unset($member->password);
-            return $member;
-        });
+        $user = $request->user();
+        $table = $user instanceof Librarian ? 'librarians' : 'members';
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique($table, 'email')->ignore($user->getKey(), $user->getKeyName()),
+            ],
+            'phone_number' => 'nullable|string|max:15',
+            'current_password' => 'nullable|string',
+            'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()],
+        ]);
+
+        if (! empty($validated['password'])) {
+            if (empty($validated['current_password']) || ! Hash::check($validated['current_password'], $user->password)) {
+                return response()->json(['message' => 'Mat khau hien tai khong dung.'], 422);
+            }
+
+            $user->password = $validated['password'];
+        }
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'] ?? null;
+        $user->phone_number = $validated['phone_number'] ?? null;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Cap nhat ho so thanh cong.',
+            'user' => $user->fresh(),
+            'role' => $user->getRoleName(),
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()?->currentAccessToken()?->delete();
+
+        return response()->json([
+            'message' => 'Dang xuat thanh cong.',
+        ]);
+    }
+
+    public function getAllMembers()
+    {
+        $members = Member::query()
+            ->orderBy('member_id')
+            ->get(['member_id', 'name', 'email', 'phone_number', 'join_date']);
 
         return response()->json($members);
     }

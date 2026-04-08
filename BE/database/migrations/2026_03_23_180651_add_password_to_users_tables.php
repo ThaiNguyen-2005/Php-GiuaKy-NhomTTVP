@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('members', function (Blueprint $table) {
-            $table->string('password')->after('email')->default(bcrypt('123456'));
+            $table->string('password')->after('email');
         });
         
         Schema::table('librarians', function (Blueprint $table) {
-            $table->string('password')->after('email')->default(bcrypt('123456'));
+            $table->string('password')->after('email');
         });
     }
 

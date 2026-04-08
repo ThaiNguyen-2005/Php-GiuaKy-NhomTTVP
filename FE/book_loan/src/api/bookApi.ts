@@ -1,10 +1,4 @@
-import {
-  mockAddBook,
-  mockDeleteBook,
-  mockFetchBooks,
-  mockSearchBooks,
-  mockUpdateBook,
-} from './mockData';
+import { apiRequest } from './client';
 
 type RawBook = {
   book_id: number;
@@ -28,6 +22,18 @@ type BookPayload = {
   location?: string;
   cover?: string;
   quantity?: number;
+};
+
+export type DigitalDocument = {
+  id: number;
+  title: string;
+  author: string;
+  type: string;
+  format: string;
+  size: string;
+  color: string;
+  cover?: string | null;
+  downloads: number;
 };
 
 function toStatusColor(isAvailable: boolean) {
@@ -65,25 +71,45 @@ function normalizeBook(book: RawBook) {
 }
 
 export async function fetchBooks() {
-  const data = (await mockFetchBooks()) as RawBook[];
+  const data = await apiRequest<RawBook[]>('/books');
   return data.map(normalizeBook);
 }
 
 export async function searchBooks(query: string) {
-  const data = (await mockSearchBooks(query)) as RawBook[];
+  const data = await apiRequest<RawBook[]>(`/books?query=${encodeURIComponent(query)}`);
   return data.map(normalizeBook);
 }
 
 export async function addBook(payload: BookPayload) {
-  const book = (await mockAddBook(payload)) as RawBook;
+  const book = await apiRequest<RawBook>('/books', {
+    method: 'POST',
+    body: {
+      ...payload,
+      genre: payload.genre || payload.category,
+    },
+  });
+
   return normalizeBook(book);
 }
 
 export async function updateBook(bookId: number, payload: BookPayload) {
-  const book = (await mockUpdateBook(bookId, payload)) as RawBook;
+  const book = await apiRequest<RawBook>(`/books/${bookId}`, {
+    method: 'PUT',
+    body: {
+      ...payload,
+      genre: payload.genre || payload.category,
+    },
+  });
+
   return normalizeBook(book);
 }
 
 export async function deleteBook(bookId: number) {
-  return mockDeleteBook(bookId);
+  return apiRequest<{ message: string }>(`/books/${bookId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchDigitalDocuments() {
+  return apiRequest<DigitalDocument[]>('/digital-documents');
 }
