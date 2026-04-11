@@ -6,6 +6,8 @@ import React, {
   useState,
 } from 'react';
 import { addBook, deleteBook, fetchBooks, updateBook } from '../../api/bookApi';
+import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 import type { FormattedBook } from '../../types/book';
 
 type InventoryFormData = {
@@ -141,8 +143,13 @@ export default function AdminInventory() {
     try {
       await deleteBook(id);
       await loadBooks(false);
-    } catch (error: any) {
-      alert(error.message || 'Lỗi khi xóa');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Lỗi khi xóa');
+      emitToast({ tone: 'error', title: 'Không thể xóa sách', message });
     }
   };
 
@@ -158,8 +165,13 @@ export default function AdminInventory() {
 
       setIsModalOpen(false);
       await loadBooks(false);
-    } catch (error: any) {
-      alert(error.message || 'Lỗi khi lưu sách');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Lỗi khi lưu sách');
+      emitToast({ tone: 'error', title: 'Không thể lưu sách', message });
     }
   };
 

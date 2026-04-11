@@ -9,7 +9,7 @@ class BorrowingSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('borrowing')->insert([
+        DB::table('borrowing')->upsert([
             [
                 'loan_id' => 1,
                 'book_id' => 1,
@@ -40,6 +40,14 @@ class BorrowingSeeder extends Seeder
                 'due_date' => '2026-03-24',
                 'return_date' => '2026-03-20',
             ],
+        ], ['loan_id'], [
+            'book_id',
+            'member_id',
+            'librarian_id',
+            'status',
+            'borrow_date',
+            'due_date',
+            'return_date',
         ]);
     }
 }

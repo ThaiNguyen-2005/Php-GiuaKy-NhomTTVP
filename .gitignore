@@ -38,3 +38,13 @@ storage/*.key
 /FE/book_loan/node_modules
 /FE/book_loan/dist
 /FE/book_loan/build
+
+# Internal workflow and planning
+/.agents/
+/FE/Plan/
+
+# Legacy/stale FE root lockfile (actual app lockfile is FE/book_loan/package-lock.json)
+/FE/package-lock.json
+
+# Internal handoff/review docs
+/PROJECT_DOCUMENTATION.md

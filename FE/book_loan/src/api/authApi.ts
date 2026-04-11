@@ -26,7 +26,7 @@ export async function registerStudent(
   phoneNumber?: string
 ) {
   if (!isValidEmail(identifier)) {
-    throw new Error('Vui long nhap email hop le de dang ky.');
+    throw new Error('Vui lòng nhập email hợp lệ để đăng ký.');
   }
 
   return apiRequest<AuthResponse>('/register', {

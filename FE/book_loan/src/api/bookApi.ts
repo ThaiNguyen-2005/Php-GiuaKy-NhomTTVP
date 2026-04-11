@@ -1,16 +1,14 @@
 import { apiRequest } from './client';
+import type {
+  BookApiRecord,
+  DigitalDocument as DigitalDocumentType,
+  FormattedBook,
+} from '../types/book';
 
-type RawBook = {
-  book_id: number;
-  title: string;
-  author: string;
-  genre?: string | null;
-  published_year?: number | null;
-  is_available?: boolean | number;
-  cover?: string | null;
-  location?: string | null;
-  total_quantity?: number | null;
-  available_quantity?: number | null;
+export type { DigitalDocument } from '../types/book';
+
+type PaginatedResponse<T> = {
+  data: T[];
 };
 
 type BookPayload = {
@@ -24,27 +22,19 @@ type BookPayload = {
   quantity?: number;
 };
 
-export type DigitalDocument = {
-  id: number;
-  title: string;
-  author: string;
-  type: string;
-  format: string;
-  size: string;
-  color: string;
-  cover?: string | null;
-  downloads: number;
-};
-
 function toStatusColor(isAvailable: boolean) {
   return isAvailable ? 'bg-green-500' : 'bg-tertiary';
 }
 
 function toStatus(isAvailable: boolean) {
-  return isAvailable ? 'San co' : 'Het sach';
+  return isAvailable ? 'Sẵn có' : 'Hết sách';
 }
 
-function normalizeBook(book: RawBook) {
+function unwrapCollection<T>(payload: T[] | PaginatedResponse<T>) {
+  return Array.isArray(payload) ? payload : payload.data;
+}
+
+function normalizeBook(book: BookApiRecord): FormattedBook {
   const availableQuantity = Number(book.available_quantity ?? 0);
   const totalQuantity = Number(book.total_quantity ?? 0);
   const isAvailable = Boolean(book.is_available) && availableQuantity > 0;
@@ -71,17 +61,19 @@ function normalizeBook(book: RawBook) {
 }
 
 export async function fetchBooks() {
-  const data = await apiRequest<RawBook[]>('/books');
-  return data.map(normalizeBook);
+  const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>('/books?limit=1000');
+  return unwrapCollection(data).map(normalizeBook);
 }
 
 export async function searchBooks(query: string) {
-  const data = await apiRequest<RawBook[]>(`/books?query=${encodeURIComponent(query)}`);
-  return data.map(normalizeBook);
+  const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>(
+    `/books?query=${encodeURIComponent(query)}&limit=1000`
+  );
+  return unwrapCollection(data).map(normalizeBook);
 }
 
 export async function addBook(payload: BookPayload) {
-  const book = await apiRequest<RawBook>('/books', {
+  const book = await apiRequest<BookApiRecord>('/books', {
     method: 'POST',
     body: {
       ...payload,
@@ -93,7 +85,7 @@ export async function addBook(payload: BookPayload) {
 }
 
 export async function updateBook(bookId: number, payload: BookPayload) {
-  const book = await apiRequest<RawBook>(`/books/${bookId}`, {
+  const book = await apiRequest<BookApiRecord>(`/books/${bookId}`, {
     method: 'PUT',
     body: {
       ...payload,
@@ -111,5 +103,32 @@ export async function deleteBook(bookId: number) {
 }
 
 export async function fetchDigitalDocuments() {
-  return apiRequest<DigitalDocument[]>('/digital-documents');
+  const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>(
+    '/digital-documents'
+  );
+
+  return unwrapCollection(data).map((book) => {
+    const format = (book.file_format || 'PDF').toUpperCase();
+
+    return {
+      id: book.book_id,
+      title: book.title,
+      author: book.author,
+      type: book.resource_type || book.genre || 'Tài liệu',
+      format,
+      size: book.file_size || 'N/A',
+      color:
+        format === 'PDF'
+          ? 'bg-red-500'
+          : format === 'EPUB'
+            ? 'bg-blue-500'
+            : format === 'AUDIO'
+              ? 'bg-purple-500'
+              : format === 'SLIDES'
+                ? 'bg-orange-500'
+                : 'bg-primary',
+      cover: book.cover,
+      downloads: Number(book.download_count ?? 0),
+    } satisfies DigitalDocumentType;
+  });
 }

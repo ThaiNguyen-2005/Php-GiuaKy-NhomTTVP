@@ -57,9 +57,9 @@ const DEFAULT_COVER =
 const books: RawBook[] = [
   {
     book_id: 101,
-    title: 'Ngon ngu hoc dai cuong',
-    author: 'Le Quang Thiem',
-    genre: 'Ngon ngu hoc',
+    title: 'Ngôn ngữ học đại cương',
+    author: 'Lê Quang Thiêm',
+    genre: 'Ngôn ngữ học',
     published_year: 2021,
     is_available: 1,
     cover: DEFAULT_COVER,
@@ -69,9 +69,9 @@ const books: RawBook[] = [
   },
   {
     book_id: 102,
-    title: 'Tam ly hoc giao duc',
-    author: 'Tran Thi Minh Duc',
-    genre: 'Tam ly hoc',
+    title: 'Tâm lý học giáo dục',
+    author: 'Trần Thị Minh Đức',
+    genre: 'Tâm lý học',
     published_year: 2022,
     is_available: 1,
     cover: DEFAULT_COVER,
@@ -81,8 +81,8 @@ const books: RawBook[] = [
   },
   {
     book_id: 103,
-    title: 'Phuong phap nghien cuu khoa hoc',
-    author: 'Nguyen Van Tuan',
+    title: 'Phương pháp nghiên cứu khoa học',
+    author: 'Nguyễn Văn Tuấn',
     genre: 'Nghien cuu',
     published_year: 2020,
     is_available: 0,
@@ -93,9 +93,9 @@ const books: RawBook[] = [
   },
   {
     book_id: 104,
-    title: 'Lap trinh web hien dai',
-    author: 'Pham Gia Hung',
-    genre: 'Cong nghe thong tin',
+    title: 'Lập trình web hiện đại',
+    author: 'Phạm Gia Hưng',
+    genre: 'Công nghệ thông tin',
     published_year: 2024,
     is_available: 1,
     cover: DEFAULT_COVER,
@@ -107,26 +107,88 @@ const books: RawBook[] = [
 
 const members: MockMember[] = [
   {
-    member_id: 2301001,
-    name: 'Nguyen Van A',
-    email: 'student1@hcmue.edu.vn',
-    phone_number: '0901234567',
+    member_id: 1,
+    name: 'Nguyễn Thị Minh Anh',
+    email: '4801104101@student.hcmue.edu.vn',
+    phone_number: '0901000001',
     password: '123456',
   },
   {
-    member_id: 2301002,
-    name: 'Tran Thi B',
-    email: 'student2@hcmue.edu.vn',
-    phone_number: '0907654321',
+    member_id: 2,
+    name: 'Trần Văn Khoa',
+    email: '4801104102@student.hcmue.edu.vn',
+    phone_number: '0901000002',
+    password: '123456',
+  },
+  {
+    member_id: 3,
+    name: 'Lê Thị Ngọc Hân',
+    email: '4901104111@student.hcmue.edu.vn',
+    phone_number: '0901000003',
+    password: '123456',
+  },
+  {
+    member_id: 4,
+    name: 'Phạm Quốc Huy',
+    email: '4901104112@student.hcmue.edu.vn',
+    phone_number: '0901000004',
+    password: '123456',
+  },
+  {
+    member_id: 5,
+    name: 'Vũ Hoàng Nam',
+    email: '4901104113@student.hcmue.edu.vn',
+    phone_number: '0901000005',
+    password: '123456',
+  },
+  {
+    member_id: 6,
+    name: 'Hoàng Thị Lan',
+    email: '5001104121@student.hcmue.edu.vn',
+    phone_number: '0901000006',
+    password: '123456',
+  },
+  {
+    member_id: 7,
+    name: 'Đỗ Minh Đức',
+    email: '5001104122@student.hcmue.edu.vn',
+    phone_number: '0901000007',
+    password: '123456',
+  },
+  {
+    member_id: 8,
+    name: 'Bùi Thị Thanh Tâm',
+    email: '5001104123@student.hcmue.edu.vn',
+    phone_number: '0901000008',
+    password: '123456',
+  },
+  {
+    member_id: 9,
+    name: 'Nguyễn Gia Bảo',
+    email: '5101104131@student.hcmue.edu.vn',
+    phone_number: '0901000009',
+    password: '123456',
+  },
+  {
+    member_id: 10,
+    name: 'Trần Ngọc Hạnh',
+    email: '5101104132@student.hcmue.edu.vn',
+    phone_number: '0901000010',
     password: '123456',
   },
 ];
 
 const librarians: MockLibrarian[] = [
   {
-    librarian_id: 9001,
-    name: 'Thu thu chinh',
-    email: 'admin@hcmue.edu.vn',
+    librarian_id: 1,
+    name: 'Nguyễn Văn An',
+    email: 'nguyen.van.an@hcmue.edu.vn',
+    password: '123456',
+  },
+  {
+    librarian_id: 2,
+    name: 'Trần Thị Mai',
+    email: 'tran.thi.mai@hcmue.edu.vn',
     password: '123456',
   },
 ];
@@ -134,8 +196,8 @@ const librarians: MockLibrarian[] = [
 const borrows: MockBorrow[] = [
   {
     loan_id: 1,
-    member_id: 2301001,
-    librarian_id: 9001,
+    member_id: 1,
+    librarian_id: 1,
     book_id: 101,
     status: 'borrowed',
     borrow_date: '2026-03-20',
@@ -143,7 +205,7 @@ const borrows: MockBorrow[] = [
   },
   {
     loan_id: 2,
-    member_id: 2301002,
+    member_id: 2,
     book_id: 102,
     status: 'pending',
     borrow_date: '2026-03-25',
@@ -151,8 +213,8 @@ const borrows: MockBorrow[] = [
   },
   {
     loan_id: 3,
-    member_id: 2301001,
-    librarian_id: 9001,
+    member_id: 1,
+    librarian_id: 1,
     book_id: 103,
     status: 'returned',
     borrow_date: '2026-03-01',
@@ -169,10 +231,10 @@ function clone<T>(value: T): T {
 }
 
 function toStatusLabel(status: BorrowStatus) {
-  if (status === 'pending') return 'Cho duyet';
-  if (status === 'borrowed') return 'Dang muon';
-  if (status === 'returned') return 'Da tra';
-  if (status === 'rejected') return 'Tu choi';
+  if (status === 'pending') return 'Chờ duyệt';
+  if (status === 'borrowed') return 'Đang mượn';
+  if (status === 'returned') return 'Đã trả';
+  if (status === 'rejected') return 'Từ chối';
   return status;
 }
 
@@ -193,11 +255,11 @@ export async function mockLogin(role: UserRole, identifier: string, password: st
     );
 
     if (!librarian || librarian.password !== password) {
-      throw new Error('Tai khoan hoac mat khau khong chinh xac.');
+      throw new Error('Tài khoản hoặc mật khẩu không chính xác.');
     }
 
     return {
-      message: 'Dang nhap thanh cong',
+      message: 'Đăng nhập thành công',
       user: {
         librarian_id: librarian.librarian_id,
         name: librarian.name,
@@ -211,12 +273,12 @@ export async function mockLogin(role: UserRole, identifier: string, password: st
     (item) => String(item.member_id) === identifier || item.email === identifier
   );
 
-  if (!member || member.password !== password) {
-    throw new Error('Tai khoan hoac mat khau khong chinh xac.');
-  }
+    if (!member || member.password !== password) {
+      throw new Error('Tài khoản hoặc mật khẩu không chính xác.');
+    }
 
   return {
-    message: 'Dang nhap thanh cong',
+    message: 'Đăng nhập thành công',
     user: {
       member_id: member.member_id,
       name: member.name,
@@ -252,7 +314,7 @@ export async function mockRegisterStudent(
   members.push(newMember);
 
   return {
-    message: 'Dang ky thanh cong',
+    message: 'Đăng ký thành công',
     user: {
       member_id: newMember.member_id,
       name: newMember.name,
@@ -313,7 +375,7 @@ export async function mockUpdateBook(bookId: number, payload: BookPayload) {
 
   const index = books.findIndex((item) => item.book_id === bookId);
   if (index < 0) {
-    throw new Error('Khong tim thay sach.');
+    throw new Error('Không tìm thấy sách.');
   }
 
   const current = books[index];
@@ -346,7 +408,7 @@ export async function mockDeleteBook(bookId: number) {
 
   const index = books.findIndex((item) => item.book_id === bookId);
   if (index < 0) {
-    throw new Error('Khong tim thay sach.');
+    throw new Error('Không tìm thấy sách.');
   }
 
   books.splice(index, 1);
@@ -372,12 +434,12 @@ export async function mockRequestBorrow(memberId: number, bookId: number) {
 
   const member = members.find((item) => item.member_id === memberId);
   if (!member) {
-    throw new Error('Khong tim thay thanh vien.');
+    throw new Error('Không tìm thấy thành viên.');
   }
 
   const book = books.find((item) => item.book_id === bookId);
   if (!book) {
-    throw new Error('Khong tim thay sach.');
+    throw new Error('Không tìm thấy sách.');
   }
 
   if (Number(book.available_quantity ?? 0) <= 0) {
@@ -396,7 +458,7 @@ export async function mockRequestBorrow(memberId: number, bookId: number) {
   borrows.push(loan);
 
   return {
-    message: 'Yeu cau muon sach da duoc gui',
+    message: 'Yêu cầu mượn sách đã được gửi',
     loan: clone(loan),
   };
 }
@@ -413,8 +475,8 @@ export async function mockGetMemberRequests(memberId: number) {
 
         return {
           id: item.loan_id,
-          bookTitle: book?.title || 'Khong ro',
-          author: book?.author || 'Khong ro',
+          bookTitle: book?.title || 'Không rõ',
+          author: book?.author || 'Không rõ',
           cover: book?.cover || DEFAULT_COVER,
           category: book?.genre || 'Khac',
           status: item.status,
@@ -438,11 +500,11 @@ export async function mockGetAllRequests() {
 
         return {
           id: item.loan_id,
-          name: member?.name || 'Khong ro',
+          name: member?.name || 'Không rõ',
           role: 'SV',
           roleColor: 'bg-primary-container text-primary',
           code: member?.member_id || 'N/A',
-          book: book?.title || 'Khong ro',
+          book: book?.title || 'Không rõ',
           bookCode: book?.book_id || 'N/A',
           status: toStatusLabel(item.status),
           date: item.return_date || item.borrow_date,
@@ -462,11 +524,11 @@ export async function mockApproveBorrow(loanId: number, librarianId: number) {
 
   const loan = borrows.find((item) => item.loan_id === loanId);
   if (!loan) {
-    throw new Error('Khong tim thay yeu cau muon.');
+    throw new Error('Không tìm thấy yêu cầu mượn.');
   }
 
   if (loan.status !== 'pending') {
-    throw new Error('Yeu cau nay da duoc xu ly.');
+    throw new Error('Yêu cầu này đã được xử lý.');
   }
 
   const book = books.find((item) => item.book_id === loan.book_id);
@@ -482,7 +544,7 @@ export async function mockApproveBorrow(loanId: number, librarianId: number) {
   book.is_available = Number(book.available_quantity ?? 0) > 0;
 
   return {
-    message: 'Da duyet yeu cau muon',
+    message: 'Đã duyệt yêu cầu mượn',
     loan: clone(loan),
   };
 }
@@ -497,11 +559,11 @@ export async function mockReturnBook(loanId: number, librarianId: number) {
 
   const loan = borrows.find((item) => item.loan_id === loanId);
   if (!loan) {
-    throw new Error('Khong tim thay yeu cau muon.');
+    throw new Error('Không tìm thấy yêu cầu mượn.');
   }
 
   if (loan.status !== 'borrowed') {
-    throw new Error('Yeu cau nay chua o trang thai dang muon.');
+    throw new Error('Yêu cầu này chưa ở trạng thái đang mượn.');
   }
 
   loan.status = 'returned';
@@ -514,7 +576,7 @@ export async function mockReturnBook(loanId: number, librarianId: number) {
   }
 
   return {
-    message: 'Da xu ly tra sach',
+    message: 'Đã xử lý trả sách',
     loan: clone(loan),
   };
 }

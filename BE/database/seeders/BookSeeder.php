@@ -9,7 +9,7 @@ class BookSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('books')->insert([
+        DB::table('books')->upsert([
             [
                 'book_id' => 1,
                 'title' => 'Giao trinh Tam ly hoc Dai cuong',
@@ -95,6 +95,21 @@ class BookSeeder extends Seeder
                 'total_quantity' => 4,
                 'available_quantity' => 4,
             ],
+        ], ['book_id'], [
+            'title',
+            'author',
+            'genre',
+            'published_year',
+            'is_available',
+            'cover',
+            'location',
+            'is_digital',
+            'resource_type',
+            'file_format',
+            'file_size',
+            'download_count',
+            'total_quantity',
+            'available_quantity',
         ]);
     }
 }

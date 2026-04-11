@@ -1,4 +1,6 @@
 import { getStoredToken } from '../auth/storage';
+import { emitAuthExpired, emitToast } from '../notifications/events';
+import { ApiError } from '../lib/errors';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:8000/api';
 const GET_CACHE_TTL_MS = 15_000;
@@ -28,7 +30,12 @@ function invalidateResponseCache() {
   responseCache.clear();
 }
 
-async function performRequest<T>(url: string, options: ApiOptions, headers: Headers) {
+async function performRequest<T>(
+  url: string,
+  options: ApiOptions,
+  headers: Headers,
+  token: string | null,
+) {
   const response = await fetch(url, {
     ...options,
     headers,
@@ -41,12 +48,24 @@ async function performRequest<T>(url: string, options: ApiOptions, headers: Head
     : await response.text().catch(() => null);
 
   if (!response.ok) {
+    const fallbackMessage = `Request failed with status ${response.status}`;
     const message =
       typeof payload === 'object' && payload && 'message' in payload
         ? String(payload.message)
-        : `Request failed with status ${response.status}`;
+        : typeof payload === 'string' && payload.trim()
+          ? payload
+          : fallbackMessage;
 
-    throw new Error(message);
+    if (response.status === 401 && token) {
+      emitToast({
+        tone: 'error',
+        title: 'Phiên đăng nhập đã hết hạn',
+        message: 'Vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.',
+      });
+      emitAuthExpired(message || 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+
+    throw new ApiError(message, { status: response.status, details: payload });
   }
 
   return payload as T;
@@ -80,7 +99,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
       }
     }
 
-    const promise = performRequest<T>(url, options, headers)
+    const promise = performRequest<T>(url, options, headers, token)
       .then((payload) => {
         responseCache.set(cacheKey, {
           expiresAt: Date.now() + GET_CACHE_TTL_MS,
@@ -102,7 +121,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     return promise;
   }
 
-  const payload = await performRequest<T>(url, options, headers);
+  const payload = await performRequest<T>(url, options, headers, token);
   invalidateResponseCache();
   return payload;
 }

@@ -1,21 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { getMyRequests } from '../../api/borrowApi';
+import type { MemberBorrowRequest } from '../../types/request';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
+const STATUS_MAP: Record<
+  MemberBorrowRequest['status'],
+  { label: string; color: string }
+> = {
   pending: { label: 'Chờ duyệt', color: 'text-blue-600 bg-blue-50 border-blue-200' },
   borrowed: { label: 'Đang mượn', color: 'text-green-600 bg-green-50 border-green-200' },
   returned: { label: 'Đã trả', color: 'text-slate-500 bg-slate-100 border-slate-200' },
   rejected: { label: 'Từ chối', color: 'text-red-600 bg-red-50 border-red-200' },
 };
 
+type RequestRow = {
+  id: number;
+  book: string;
+  author: string;
+  cover?: string | null;
+  date: string;
+  rawStatus: MemberBorrowRequest['status'];
+  statusLabel: string;
+  statusColor: string;
+};
+
+function formatDate(value?: string) {
+  return value ? new Date(value).toLocaleDateString('vi-VN') : '—';
+}
+
 export default function StudentRequests() {
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'borrowed' | 'returned'>('all');
-  const [allRequests, setAllRequests] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'all' | MemberBorrowRequest['status']>('all');
+  const [allRequests, setAllRequests] = useState<RequestRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     getMyRequests()
-      .then((data) => {
+      .then((data: MemberBorrowRequest[]) => {
         const mapped = data.map((r) => {
           const cfg = STATUS_MAP[r.status] || {
             label: r.status,
@@ -27,9 +46,7 @@ export default function StudentRequests() {
             book: r.bookTitle,
             author: r.author,
             cover: r.cover,
-            date: r.borrow_date
-              ? new Date(r.borrow_date).toLocaleDateString('vi-VN')
-              : '—',
+            date: formatDate(r.borrow_date),
             rawStatus: r.status,
             statusLabel: cfg.label,
             statusColor: cfg.color,
@@ -37,11 +54,14 @@ export default function StudentRequests() {
         });
         setAllRequests(mapped);
       })
-      .catch(console.error)
+      .catch((error: unknown) => {
+        console.error(error);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
-  const countOf = (status: string) => allRequests.filter((r) => r.rawStatus === status).length;
+  const countOf = (status: MemberBorrowRequest['status']) =>
+    allRequests.filter((r) => r.rawStatus === status).length;
   const filtered =
     activeTab === 'all' ? allRequests : allRequests.filter((r) => r.rawStatus === activeTab);
 

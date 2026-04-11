@@ -1,8 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { updateMyProfile } from '../../api/userApi';
 import { useAuth } from '../../auth/AuthContext';
+import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 
 const PREFS_KEY = 'student-notification-prefs';
+
+type Feedback = {
+  tone: 'success' | 'error' | 'info';
+  message: string;
+};
+
+type NotificationPrefs = {
+  dueSoon: boolean;
+  newBooks: boolean;
+  smsUpdates: boolean;
+};
 
 export default function StudentSettings() {
   const { user, updateUser } = useAuth();
@@ -14,12 +27,13 @@ export default function StudentSettings() {
     password: '',
     password_confirmation: '',
   });
-  const [prefs, setPrefs] = useState({
+  const [prefs, setPrefs] = useState<NotificationPrefs>({
     dueSoon: true,
     newBooks: true,
     smsUpdates: false,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
     setForm((current) => ({
@@ -30,12 +44,19 @@ export default function StudentSettings() {
     }));
 
     const storedPrefs = localStorage.getItem(PREFS_KEY);
-    if (storedPrefs) {
-      try {
-        setPrefs(JSON.parse(storedPrefs));
-      } catch {
-        localStorage.removeItem(PREFS_KEY);
-      }
+    if (!storedPrefs) {
+      return;
+    }
+
+    try {
+      const parsedPrefs = JSON.parse(storedPrefs) as Partial<NotificationPrefs>;
+      setPrefs({
+        dueSoon: Boolean(parsedPrefs.dueSoon ?? true),
+        newBooks: Boolean(parsedPrefs.newBooks ?? true),
+        smsUpdates: Boolean(parsedPrefs.smsUpdates ?? false),
+      });
+    } catch {
+      localStorage.removeItem(PREFS_KEY);
     }
   }, [user]);
 
@@ -55,15 +76,30 @@ export default function StudentSettings() {
 
       updateUser(response.user);
       localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      setFeedback({ tone: 'success', message: response.message });
+      emitToast({
+        tone: 'success',
+        title: 'Đã lưu hồ sơ',
+        message: response.message,
+      });
       setForm((current) => ({
         ...current,
         current_password: '',
         password: '',
         password_confirmation: '',
       }));
-      alert(response.message);
-    } catch (error: any) {
-      alert(error.message || 'Không thể cập nhật hồ sơ.');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể cập nhật hồ sơ.');
+      setFeedback({ tone: 'error', message });
+      emitToast({
+        tone: 'error',
+        title: 'Không thể cập nhật hồ sơ',
+        message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -87,6 +123,22 @@ export default function StudentSettings() {
         </button>
       </div>
 
+      {feedback ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-2xl border px-4 py-3 text-sm ${
+            feedback.tone === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : feedback.tone === 'error'
+                ? 'border-rose-200 bg-rose-50 text-rose-900'
+                : 'border-sky-200 bg-sky-50 text-sky-900'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      ) : null}
+
       <div className="divide-y divide-surface-container overflow-hidden rounded-2xl border border-surface-container-low bg-surface-bright scholar-shadow">
         <section className="p-8">
           <h4 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
@@ -103,10 +155,14 @@ export default function StudentSettings() {
             </div>
             <div className="grid flex-1 grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                <label
+                  htmlFor="student-settings-name"
+                  className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+                >
                   Họ và tên
                 </label>
                 <input
+                  id="student-settings-name"
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -115,10 +171,14 @@ export default function StudentSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                <label
+                  htmlFor="student-settings-member-id"
+                  className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+                >
                   Mã số sinh viên
                 </label>
                 <input
+                  id="student-settings-member-id"
                   type="text"
                   value={user?.member_id || ''}
                   className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none"
@@ -126,10 +186,14 @@ export default function StudentSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                <label
+                  htmlFor="student-settings-email"
+                  className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+                >
                   Email liên hệ
                 </label>
                 <input
+                  id="student-settings-email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -137,10 +201,14 @@ export default function StudentSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                <label
+                  htmlFor="student-settings-phone"
+                  className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+                >
                   Số điện thoại
                 </label>
                 <input
+                  id="student-settings-phone"
                   type="text"
                   value={form.phone_number}
                   onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
@@ -160,22 +228,30 @@ export default function StudentSettings() {
           </h4>
           <div className="grid max-w-2xl grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+              <label
+                htmlFor="student-settings-current-password"
+                className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+              >
                 Mật khẩu hiện tại
               </label>
               <input
+                id="student-settings-current-password"
                 type="password"
                 value={form.current_password}
                 onChange={(e) => setForm({ ...form, current_password: e.target.value })}
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div></div>
+            <div />
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+              <label
+                htmlFor="student-settings-password"
+                className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+              >
                 Mật khẩu mới
               </label>
               <input
+                id="student-settings-password"
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -183,10 +259,14 @@ export default function StudentSettings() {
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+              <label
+                htmlFor="student-settings-password-confirmation"
+                className="block text-xs font-bold uppercase tracking-widest text-slate-500"
+              >
                 Xác nhận mật khẩu mới
               </label>
               <input
+                id="student-settings-password-confirmation"
                 type="password"
                 value={form.password_confirmation}
                 onChange={(e) =>
@@ -228,9 +308,9 @@ export default function StudentSettings() {
                 className="mt-1 h-4 w-4 rounded border-outline text-primary focus:ring-primary"
               />
               <span>
-                <p className="text-sm font-bold text-slate-800">Thông báo có sách tài liệu mới</p>
+                <p className="text-sm font-bold text-slate-800">Nhận thông báo sách mới</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Nhận bản tin hàng tháng về các đầu sách mới.
+                  Gợi ý đầu sách mới phù hợp với hồ sơ của bạn.
                 </p>
               </span>
             </label>
@@ -242,11 +322,9 @@ export default function StudentSettings() {
                 className="mt-1 h-4 w-4 rounded border-outline text-primary focus:ring-primary"
               />
               <span>
-                <p className="text-sm font-bold text-slate-800">
-                  Tin nhắn SMS cập nhật tình trạng phê duyệt đơn
-                </p>
+                <p className="text-sm font-bold text-slate-800">Nhận cập nhật qua SMS</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Nhận thông báo qua điện thoại khi đơn được xử lý.
+                  Chỉ bật nếu bạn muốn nhận nhắc nhở bằng số điện thoại.
                 </p>
               </span>
             </label>

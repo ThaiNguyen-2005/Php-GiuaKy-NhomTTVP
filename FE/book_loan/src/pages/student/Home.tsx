@@ -1,66 +1,128 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchBooks } from '../../api/bookApi';
+import { getMyRequests } from '../../api/borrowApi';
 import { FormattedBook } from '../../types/book';
+
+type HomeStats = {
+  activeLoans: number;
+  pendingRequests: number;
+  overdueLoans: number;
+  catalogCount: number;
+};
+
+const INITIAL_STATS: HomeStats = {
+  activeLoans: 0,
+  pendingRequests: 0,
+  overdueLoans: 0,
+  catalogCount: 0,
+};
 
 export default function Home() {
   const navigate = useNavigate();
   const [newBooks, setNewBooks] = useState<FormattedBook[]>([]);
+  const [stats, setStats] = useState<HomeStats>(INITIAL_STATS);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
-    fetchBooks()
-      .then((data) => {
-        setNewBooks(data.slice(0, 5));
-      })
-      .catch(console.error);
+    let isActive = true;
+
+    const loadHomeData = async () => {
+      setIsLoadingStats(true);
+
+      try {
+        const [books, requests] = await Promise.all([fetchBooks(), getMyRequests()]);
+        const borrowed = requests.filter((request) => request.status === 'borrowed');
+        const pending = requests.filter((request) => request.status === 'pending');
+        const overdue = borrowed.filter((request) => {
+          if (!request.due_date) {
+            return false;
+          }
+
+          return new Date(request.due_date) < new Date();
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setStats({
+          activeLoans: borrowed.length,
+          pendingRequests: pending.length,
+          overdueLoans: overdue.length,
+          catalogCount: books.length,
+        });
+        setNewBooks(books.slice(0, 5));
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isActive) {
+          setIsLoadingStats(false);
+        }
+      }
+    };
+
+    void loadHomeData();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
+
+  const statCards = [
+    {
+      label: 'Sách đang mượn',
+      value: isLoadingStats ? '—' : stats.activeLoans,
+      accent: 'bg-primary-container text-on-primary-container',
+      icon: 'auto_stories',
+      onClick: () => navigate('/my-books'),
+    },
+    {
+      label: 'Sách chờ duyệt',
+      value: isLoadingStats ? '—' : stats.pendingRequests,
+      accent: 'bg-tertiary-container text-on-tertiary-container',
+      icon: 'pending_actions',
+      onClick: () => navigate('/requests'),
+    },
+    {
+      label: 'Sách quá hạn',
+      value: isLoadingStats ? '—' : stats.overdueLoans,
+      accent: 'bg-surface-container text-on-surface',
+      icon: 'event_busy',
+      onClick: () => navigate('/history'),
+    },
+    {
+      label: 'Tổng đầu sách',
+      value: isLoadingStats ? '—' : stats.catalogCount,
+      accent: 'bg-surface-bright text-on-surface',
+      icon: 'library_books',
+      onClick: () => navigate('/catalog'),
+    },
+  ];
 
   return (
     <div className="space-y-10 p-8">
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div
-          className="group flex cursor-pointer items-center justify-between rounded-xl bg-primary-container p-6 scholar-shadow transition-transform hover:-translate-y-1"
-          onClick={() => navigate('/my-books')}
-        >
-          <div>
-            <p className="mb-1 text-sm font-medium text-on-primary-container/80">Sách đang mượn</p>
-            <h3 className="text-4xl font-bold text-on-primary-container">04</h3>
-          </div>
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-on-primary-container/10">
-            <span className="material-symbols-outlined text-3xl text-on-primary-container">
-              auto_stories
-            </span>
-          </div>
-        </div>
-        <div
-          className="group flex cursor-pointer items-center justify-between rounded-xl bg-tertiary-container p-6 scholar-shadow transition-transform hover:-translate-y-1"
-          onClick={() => navigate('/my-books')}
-        >
-          <div>
-            <p className="mb-1 text-sm font-medium text-on-tertiary-container/80">Sách quá hạn</p>
-            <h3 className="text-4xl font-bold text-on-tertiary-container">01</h3>
-          </div>
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-on-tertiary-container/10">
-            <span className="material-symbols-outlined text-3xl text-on-tertiary-container">
-              event_busy
-            </span>
-          </div>
-        </div>
-        <div className="group flex cursor-pointer items-center justify-between rounded-xl bg-surface-bright p-6 scholar-shadow transition-transform hover:-translate-y-1">
-          <div>
-            <p className="mb-1 text-sm font-medium text-on-surface-variant">Sách yêu thích</p>
-            <h3 className="text-4xl font-bold text-on-surface">12</h3>
-          </div>
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-surface-container">
-            <span className="material-symbols-outlined text-3xl text-on-surface-variant">
-              favorite
-            </span>
-          </div>
-        </div>
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        {statCards.map((card) => (
+          <button
+            key={card.label}
+            type="button"
+            className={`group flex cursor-pointer items-center justify-between rounded-xl p-6 text-left scholar-shadow transition-transform hover:-translate-y-1 ${card.accent}`}
+            onClick={card.onClick}
+          >
+            <div>
+              <p className="mb-1 text-sm font-medium opacity-80">{card.label}</p>
+              <h3 className="text-4xl font-bold">{card.value}</h3>
+            </div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-white/20">
+              <span className="material-symbols-outlined text-3xl">{card.icon}</span>
+            </div>
+          </button>
+        ))}
       </section>
 
       <section className="scholar-shadow relative h-[320px] overflow-hidden rounded-xl">
-        <div className="absolute inset-0 z-10 bg-gradient-to-r from-primary to-primary/40"></div>
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-primary to-primary/40" />
         <img
           src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=2000"
           alt="Library"
@@ -75,9 +137,9 @@ export default function Home() {
           <h2 className="mb-4 text-5xl font-bold leading-tight">
             Nghệ Thuật Của Tư Duy Rành Mạch
           </h2>
-          <p className="mb-8 text-lg opacity-90 text-primary-container">
-            Khám phá 99 sai lầm nhận thức phổ biến và cách để đưa ra những quyết định
-            sáng suốt hơn mỗi ngày.
+          <p className="mb-8 text-lg text-primary-container opacity-90">
+            Khám phá 99 sai lầm nhận thức phổ biến và cách để đưa ra những quyết định sáng suốt hơn
+            mỗi ngày.
           </p>
           <div className="flex gap-4">
             <button className="rounded-lg bg-white px-6 py-3 font-bold text-primary transition-colors hover:bg-surface-container">
@@ -143,9 +205,15 @@ export default function Home() {
       <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-container-high pt-8 text-sm text-on-surface-variant md:flex-row">
         <p>© 2024 Ho Chi Minh City University of Education Digital Library. All rights reserved.</p>
         <div className="flex gap-6">
-          <a href="#" className="transition-colors hover:text-primary">Điều khoản mượn trả</a>
-          <a href="#" className="transition-colors hover:text-primary">Chính sách bảo mật</a>
-          <a href="#" className="transition-colors hover:text-primary">Hỗ trợ sinh viên</a>
+          <a href="#" className="transition-colors hover:text-primary">
+            Điều khoản mượn trả
+          </a>
+          <a href="#" className="transition-colors hover:text-primary">
+            Chính sách bảo mật
+          </a>
+          <a href="#" className="transition-colors hover:text-primary">
+            Hỗ trợ sinh viên
+          </a>
         </div>
       </footer>
     </div>

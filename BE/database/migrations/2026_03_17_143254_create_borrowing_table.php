@@ -13,15 +13,15 @@ return new class extends Migration
     {
         Schema::create('borrowing', function (Blueprint $table) {
             $table->id('loan_id');
-            $table->unsignedBigInteger('book_id')->nullable();
-            $table->unsignedBigInteger('member_id')->nullable();
+            $table->unsignedBigInteger('book_id');
+            $table->unsignedBigInteger('member_id');
             $table->date('borrow_date')->default(\Illuminate\Support\Facades\DB::raw('CURRENT_DATE'));
             $table->date('return_date')->nullable();
             $table->unsignedBigInteger('librarian_id')->nullable();
 
-            $table->foreign('book_id')->references('book_id')->on('books');
-            $table->foreign('member_id')->references('member_id')->on('members');
-            $table->foreign('librarian_id')->references('librarian_id')->on('librarians');
+            $table->foreign('book_id')->references('book_id')->on('books')->restrictOnDelete();
+            $table->foreign('member_id')->references('member_id')->on('members')->restrictOnDelete();
+            $table->foreign('librarian_id')->references('librarian_id')->on('librarians')->nullOnDelete();
         });
     }
 

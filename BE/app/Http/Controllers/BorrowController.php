@@ -2,56 +2,62 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BorrowStoreRequest;
+use App\Http\Requests\BorrowingIndexRequest;
+use App\Http\Resources\BorrowingResource;
 use App\Models\Book;
 use App\Models\Borrowing;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BorrowController extends Controller
 {
-    public function requestBorrow(Request $request)
+    public function requestBorrow(BorrowStoreRequest $request)
     {
-        $request->validate([
-            'book_id' => 'required|integer|exists:books,book_id',
-        ]);
-
         $member = $request->user();
-        $book = Book::query()->findOrFail($request->integer('book_id'));
+        $validated = $request->validated();
 
-        if ($book->available_quantity <= 0) {
-            return response()->json(['message' => 'Sach hien khong co san de muon.'], 422);
-        }
+        $loan = DB::transaction(function () use ($member, $validated) {
+            $book = Book::query()->lockForUpdate()->findOrFail($validated['book_id']);
 
-        $activeLoanCount = Borrowing::query()
-            ->where('member_id', $member->member_id)
-            ->whereIn('status', ['pending', 'borrowed'])
-            ->count();
+            if ($book->available_quantity <= 0) {
+                throw new HttpResponseException(response()->json(['message' => 'Sach hien khong co san de muon.'], 422));
+            }
 
-        if ($activeLoanCount >= 5) {
-            return response()->json(['message' => 'Ban da dat gioi han 5 yeu cau dang hoat dong.'], 422);
-        }
+            $activeLoanCount = Borrowing::query()
+                ->where('member_id', $member->member_id)
+                ->whereIn('status', ['pending', 'borrowed'])
+                ->lockForUpdate()
+                ->count();
 
-        $duplicateLoan = Borrowing::query()
-            ->where('member_id', $member->member_id)
-            ->where('book_id', $book->book_id)
-            ->whereIn('status', ['pending', 'borrowed'])
-            ->exists();
+            if ($activeLoanCount >= 5) {
+                throw new HttpResponseException(response()->json(['message' => 'Ban da dat gioi han 5 yeu cau dang hoat dong.'], 422));
+            }
 
-        if ($duplicateLoan) {
-            return response()->json(['message' => 'Ban da co mot yeu cau hoac phieu muon cho cuon sach nay.'], 422);
-        }
+            $duplicateLoan = Borrowing::query()
+                ->where('member_id', $member->member_id)
+                ->where('book_id', $book->book_id)
+                ->whereIn('status', ['pending', 'borrowed'])
+                ->lockForUpdate()
+                ->exists();
 
-        $loan = Borrowing::query()->create([
-            'member_id' => $member->member_id,
-            'book_id' => $book->book_id,
-            'status' => 'pending',
-            'borrow_date' => now()->toDateString(),
-        ]);
+            if ($duplicateLoan) {
+                throw new HttpResponseException(response()->json(['message' => 'Ban da co mot yeu cau hoac phieu muon cho cuon sach nay.'], 422));
+            }
+
+            return Borrowing::query()->create([
+                'member_id' => $member->member_id,
+                'book_id' => $book->book_id,
+                'status' => 'pending',
+                'borrow_date' => now()->toDateString(),
+            ]);
+        });
 
         return response()->json([
             'message' => 'Yeu cau muon sach da duoc gui.',
-            'loan' => $loan,
+            'loan' => BorrowingResource::make($loan->fresh(['book', 'member', 'librarian'])),
         ], 201);
     }
 
@@ -81,16 +87,16 @@ class BorrowController extends Controller
             $loan->due_date = now()->addDays(14)->toDateString();
             $loan->save();
 
-            $book->available_quantity = max(0, $book->available_quantity - 1);
+            $book->available_quantity = $book->available_quantity - 1;
             $book->is_available = $book->available_quantity > 0;
             $book->save();
 
-            return $loan->fresh(['book', 'member']);
+            return $loan->fresh(['book', 'member', 'librarian']);
         });
 
         return response()->json([
             'message' => 'Da duyet yeu cau muon sach.',
-            'loan' => $loan,
+            'loan' => BorrowingResource::make($loan),
         ]);
     }
 
@@ -119,78 +125,76 @@ class BorrowController extends Controller
                 $book->save();
             }
 
-            return $loan->fresh(['book', 'member']);
+            return $loan->fresh(['book', 'member', 'librarian']);
         });
 
         return response()->json([
             'message' => 'Da xu ly tra sach.',
-            'loan' => $loan,
+            'loan' => BorrowingResource::make($loan),
         ]);
     }
 
-    public function getAllRequests()
+    public function getAllRequests(BorrowingIndexRequest $request)
     {
-        $requests = Borrowing::query()
-            ->with(['member', 'book'])
-            ->latest('loan_id')
-            ->get();
+        $validated = $request->validated();
+        $requests = $this->buildBorrowingQuery($validated)
+            ->paginate($validated['limit'] ?? 15, ['*'], 'page', $validated['page'] ?? 1)
+            ->withQueryString();
 
-        $mappedRequests = $requests->map(function (Borrowing $request) {
-            return [
-                'id' => $request->loan_id,
-                'name' => $request->member?->name ?? 'Khong ro',
-                'role' => 'SV',
-                'roleColor' => 'bg-primary-container text-primary',
-                'code' => $request->member?->member_id,
-                'book' => $request->book?->title ?? 'Khong ro',
-                'bookCode' => $request->book?->book_id,
-                'status' => $this->mapStatusLabel($request->status),
-                'date' => $request->return_date?->toDateString()
-                    ?? $request->due_date?->toDateString()
-                    ?? $request->borrow_date?->toDateString(),
-                'requested_at' => $request->borrow_date?->toDateString(),
-                'due_date' => $request->due_date?->toDateString(),
-                'return_date' => $request->return_date?->toDateString(),
-                'raw_status' => $request->status,
-            ];
-        });
-
-        return response()->json($mappedRequests);
+        return BorrowingResource::collection($requests);
     }
 
-    public function getMemberRequests(Request $request)
+    public function getMemberRequests(BorrowingIndexRequest $request)
     {
-        $requests = Borrowing::query()
-            ->with('book')
-            ->where('member_id', $request->user()->member_id)
-            ->latest('loan_id')
-            ->get();
+        $validated = $request->validated();
+        $requests = $this->buildBorrowingQuery($validated, $request->user()->member_id)
+            ->paginate($validated['limit'] ?? 15, ['*'], 'page', $validated['page'] ?? 1)
+            ->withQueryString();
 
-        return response()->json(
-            $requests->map(function (Borrowing $request) {
-                return [
-                    'id' => $request->loan_id,
-                    'bookTitle' => $request->book?->title ?? 'Khong ro',
-                    'author' => $request->book?->author ?? 'Khong ro',
-                    'cover' => $request->book?->cover,
-                    'category' => $request->book?->genre,
-                    'status' => $request->status,
-                    'borrow_date' => $request->borrow_date?->toDateString(),
-                    'due_date' => $request->due_date?->toDateString(),
-                    'return_date' => $request->return_date?->toDateString(),
-                ];
-            })
-        );
+        return BorrowingResource::collection($requests);
     }
 
-    private function mapStatusLabel(string $status): string
+    private function buildBorrowingQuery(array $filters, ?int $memberId = null): Builder
     {
-        return match ($status) {
-            'pending' => 'Cho duyet',
-            'borrowed' => 'Dang muon',
-            'returned' => 'Da tra',
-            'rejected' => 'Tu choi',
-            default => $status,
-        };
+        $query = Borrowing::query()
+            ->with(['member', 'book', 'librarian'])
+            ->orderByDesc('loan_id');
+
+        if ($memberId !== null) {
+            $query->where('member_id', $memberId);
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['member_id'])) {
+            $query->where('member_id', $filters['member_id']);
+        }
+
+        if (! empty($filters['book_id'])) {
+            $query->where('book_id', $filters['book_id']);
+        }
+
+        $search = trim((string) ($filters['query'] ?? ''));
+
+        if ($search !== '') {
+            $query->where(function (Builder $builder) use ($search) {
+                $builder
+                    ->whereHas('member', function (Builder $memberQuery) use ($search) {
+                        $memberQuery
+                            ->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('email', 'like', '%'.$search.'%');
+                    })
+                    ->orWhereHas('book', function (Builder $bookQuery) use ($search) {
+                        $bookQuery
+                            ->where('title', 'like', '%'.$search.'%')
+                            ->orWhere('author', 'like', '%'.$search.'%');
+                    })
+                    ->orWhere('status', 'like', '%'.$search.'%');
+            });
+        }
+
+        return $query;
     }
 }

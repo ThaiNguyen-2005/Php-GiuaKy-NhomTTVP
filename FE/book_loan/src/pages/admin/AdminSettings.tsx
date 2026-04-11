@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { emitToast } from '../../notifications/events';
 
 const STORAGE_KEY = 'admin-library-settings';
 
@@ -11,88 +12,166 @@ const defaultSettings = {
   suspendAfterDays: 30,
 };
 
+type Settings = typeof defaultSettings;
+
 export default function AdminSettings() {
-    const [settings, setSettings] = useState(defaultSettings);
-    const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-    useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) {
-            return;
-        }
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return;
+    }
 
-        try {
-            setSettings({ ...defaultSettings, ...JSON.parse(stored) });
-        } catch {
-            localStorage.removeItem(STORAGE_KEY);
-        }
-    }, []);
+    try {
+      setSettings({ ...defaultSettings, ...JSON.parse(stored) });
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
 
-    const handleSubmit = (event: React.FormEvent) => {
-        event.preventDefault();
-        setIsSaving(true);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        setTimeout(() => {
-            setIsSaving(false);
-            alert('Đã lưu cấu hình hệ thống trên trình duyệt hiện tại.');
-        }, 250);
-    };
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSaving(true);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 
-    return (
-        <form onSubmit={handleSubmit} className="p-8 space-y-8 max-w-5xl mx-auto w-full">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-on-surface">Cài đặt hệ thống</h2>
-                    <p className="text-on-surface-variant text-sm mt-1">Cấu hình tham số thư viện và quy tắc vận hành.</p>
-                </div>
-                <button type="submit" className="px-6 py-2.5 bg-primary text-white rounded-xl font-medium hover:-translate-y-0.5 shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">save</span> {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-            </div>
+    window.setTimeout(() => {
+      setIsSaving(false);
+      const message = 'Đã lưu cấu hình hệ thống trên trình duyệt hiện tại.';
+      setFeedback(message);
+      emitToast({ tone: 'success', title: 'Đã lưu cấu hình', message });
+    }, 250);
+  };
 
-            <div className="bg-surface-bright rounded-2xl scholar-shadow border border-surface-container-low overflow-hidden p-8 space-y-10">
-                <section>
-                    <h4 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary text-[20px] filled">timelapse</span>
-                        Thời lượng mượn sách
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Tối đa cho sinh viên (ngày)</span>
-                            <input type="number" value={settings.studentDays} onChange={(e) => setSettings({ ...settings, studentDays: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Tối đa cho giảng viên (ngày)</span>
-                            <input type="number" value={settings.lecturerDays} onChange={(e) => setSettings({ ...settings, lecturerDays: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Số lượng mượn tối đa (cuốn)</span>
-                            <input type="number" value={settings.maxBooks} onChange={(e) => setSettings({ ...settings, maxBooks: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Thời hạn gia hạn tối đa (ngày)</span>
-                            <input type="number" value={settings.renewalDays} onChange={(e) => setSettings({ ...settings, renewalDays: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                    </div>
-                </section>
+  return (
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-5xl space-y-8 p-8">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-on-surface">Cài đặt hệ thống</h2>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Cấu hình tham số thư viện và quy tắc vận hành.
+          </p>
+        </div>
+        <button
+          type="submit"
+          className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 font-medium text-white shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+        >
+          <span className="material-symbols-outlined text-sm">save</span>
+          {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
+      </div>
 
-                <section>
-                    <h4 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-red-500 text-[20px] filled">gavel</span>
-                        Mức phạt quá hạn
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Phạt theo ngày (VND)</span>
-                            <input type="number" value={settings.finePerDay} onChange={(e) => setSettings({ ...settings, finePerDay: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                        <label className="space-y-2">
-                            <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Tự động khóa thẻ sau (ngày)</span>
-                            <input type="number" value={settings.suspendAfterDays} onChange={(e) => setSettings({ ...settings, suspendAfterDays: Number(e.target.value) })} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" />
-                        </label>
-                    </div>
-                </section>
-            </div>
-        </form>
-    );
+      {feedback ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+        >
+          {feedback}
+        </div>
+      ) : null}
+
+      <div className="space-y-10 overflow-hidden rounded-2xl border border-surface-container-low bg-surface-bright p-8 scholar-shadow">
+        <section>
+          <h4 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
+            <span className="material-symbols-outlined filled text-[20px] text-primary">
+              timelapse
+            </span>
+            Thời lượng mượn sách
+          </h4>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Tối đa cho sinh viên (ngày)
+              </span>
+              <input
+                type="number"
+                value={settings.studentDays}
+                onChange={(e) =>
+                  setSettings({ ...settings, studentDays: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Tối đa cho giảng viên (ngày)
+              </span>
+              <input
+                type="number"
+                value={settings.lecturerDays}
+                onChange={(e) =>
+                  setSettings({ ...settings, lecturerDays: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Số lượng mượn tối đa (cuốn)
+              </span>
+              <input
+                type="number"
+                value={settings.maxBooks}
+                onChange={(e) => setSettings({ ...settings, maxBooks: Number(e.target.value) })}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Thời hạn gia hạn tối đa (ngày)
+              </span>
+              <input
+                type="number"
+                value={settings.renewalDays}
+                onChange={(e) =>
+                  setSettings({ ...settings, renewalDays: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section>
+          <h4 className="mb-6 flex items-center gap-2 text-lg font-bold text-slate-800">
+            <span className="material-symbols-outlined filled text-[20px] text-red-500">
+              gavel
+            </span>
+            Mức phạt quá hạn
+          </h4>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Phạt theo ngày (VND)
+              </span>
+              <input
+                type="number"
+                value={settings.finePerDay}
+                onChange={(e) =>
+                  setSettings({ ...settings, finePerDay: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                Tự động khóa thẻ sau (ngày)
+              </span>
+              <input
+                type="number"
+                value={settings.suspendAfterDays}
+                onChange={(e) =>
+                  setSettings({ ...settings, suspendAfterDays: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+          </div>
+        </section>
+      </div>
+    </form>
+  );
 }

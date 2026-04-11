@@ -7,6 +7,9 @@ import {
   type BorrowRequest,
 } from '../../api/borrowApi';
 import { getAllMembers } from '../../api/userApi';
+import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
+import type { FormattedBook } from '../../types/book';
 
 type DashboardInventoryBook = {
   id: number;
@@ -59,7 +62,7 @@ function isMatchingIdentifier(input: string, candidate: string | number | null |
   return normalizedInput === normalizedCandidate;
 }
 
-function mapInventoryBook(book: any): DashboardInventoryBook {
+function mapInventoryBook(book: FormattedBook): DashboardInventoryBook {
   return {
     id: Number(book.id ?? book.book_id),
     title: book.title,
@@ -165,11 +168,21 @@ export default function AdminDashboard() {
         tone: 'success',
         message: `Đã cho mượn sách cho Member ${quickForm.memberId} với Book ${quickForm.bookId}.`,
       });
+      emitToast({
+        tone: 'success',
+        title: 'Đã cho mượn sách',
+        message: `Member ${quickForm.memberId} và Book ${quickForm.bookId} đã được xử lý.`,
+      });
       await loadDashboard();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể cho mượn sách lúc này.');
       setQuickFeedback({
         tone: 'error',
-        message: error.message || 'Không thể cho mượn sách lúc này.',
+        message,
       });
     } finally {
       setLoadingAction(null);
@@ -203,11 +216,21 @@ export default function AdminDashboard() {
         tone: 'success',
         message: `Đã nhận trả sách cho Member ${quickForm.memberId} với Book ${quickForm.bookId}.`,
       });
+      emitToast({
+        tone: 'success',
+        title: 'Đã nhận trả sách',
+        message: `Member ${quickForm.memberId} và Book ${quickForm.bookId} đã được cập nhật.`,
+      });
       await loadDashboard();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể trả sách lúc này.');
       setQuickFeedback({
         tone: 'error',
-        message: error.message || 'Không thể trả sách lúc này.',
+        message,
       });
     } finally {
       setLoadingAction(null);
@@ -217,6 +240,7 @@ export default function AdminDashboard() {
   const handlePendingApprove = async (loanId: number) => {
     try {
       await approveBorrow(loanId);
+      emitToast({ tone: 'success', title: 'Đã duyệt yêu cầu', message: `Phiếu #${loanId} đã được chuyển sang trạng thái mượn.` });
       await loadDashboard();
     } catch (error) {
       console.error(error);
@@ -280,7 +304,7 @@ export default function AdminDashboard() {
                   onChange={(event) =>
                     setQuickForm((current) => ({ ...current, memberId: event.target.value }))
                   }
-                  placeholder="Ví dụ: 2301001"
+                  placeholder="Ví dụ: 1"
                   className="w-full bg-surface-container border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                 />
               </div>
@@ -439,7 +463,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-outline">Sắp xếp:</span>
-              <select aria-label="Sap xep danh sach sach" className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
+              <select aria-label="Sắp xếp danh sách sách" className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
                 <option>Mới nhất</option>
                 <option>Tên A-Z</option>
                 <option>Số lượng</option>

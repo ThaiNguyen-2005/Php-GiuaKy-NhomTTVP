@@ -2,26 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\MemberIndexRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Resources\AuthenticatedUserResource;
+use App\Http\Resources\MemberResource;
 use App\Models\Librarian;
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'role' => 'required|in:student,admin',
-            'identifier' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
-        $role = $request->string('role')->value();
-        $identifier = $request->string('identifier')->trim()->value();
-        $password = $request->string('password')->value();
+        $validated = $request->validated();
+        $role = $validated['role'];
+        $identifier = trim($validated['identifier']);
+        $password = $validated['password'];
 
         $user = $role === 'admin'
             ? Librarian::query()
@@ -35,7 +34,7 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($password, $user->password)) {
             return response()->json([
-                'message' => 'Tai khoan hoac mat khau khong chinh xac.',
+                'message' => 'Invalid credentials.',
             ], 401);
         }
 
@@ -43,26 +42,21 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Dang nhap thanh cong',
-            'user' => $user,
+            'user' => AuthenticatedUserResource::make($user),
             'role' => $user->getRoleName(),
             'token' => $token,
         ]);
     }
 
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:members,email',
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
-            'phone_number' => 'nullable|string|max:15',
-        ]);
+        $validated = $request->validated();
 
         $user = Member::query()->create([
-            'name' => $request->string('name')->value(),
-            'email' => $request->string('email')->value(),
-            'phone_number' => $request->string('phone_number')->value() ?: null,
-            'password' => $request->string('password')->value(),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'] ?? null,
+            'password' => $validated['password'],
             'join_date' => now()->toDateString(),
         ]);
 
@@ -70,7 +64,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Dang ky thanh cong',
-            'user' => $user,
+            'user' => AuthenticatedUserResource::make($user),
             'role' => 'student',
             'token' => $token,
         ], 201);
@@ -81,28 +75,15 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'user' => $user,
+            'user' => AuthenticatedUserResource::make($user),
             'role' => method_exists($user, 'getRoleName') ? $user->getRoleName() : null,
         ]);
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(UpdateProfileRequest $request)
     {
         $user = $request->user();
-        $table = $user instanceof Librarian ? 'librarians' : 'members';
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => [
-                'nullable',
-                'email',
-                'max:255',
-                Rule::unique($table, 'email')->ignore($user->getKey(), $user->getKeyName()),
-            ],
-            'phone_number' => 'nullable|string|max:15',
-            'current_password' => 'nullable|string',
-            'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()],
-        ]);
+        $validated = $request->validated();
 
         if (! empty($validated['password'])) {
             if (empty($validated['current_password']) || ! Hash::check($validated['current_password'], $user->password)) {
@@ -113,13 +94,20 @@ class AuthController extends Controller
         }
 
         $user->name = $validated['name'];
-        $user->email = $validated['email'] ?? null;
-        $user->phone_number = $validated['phone_number'] ?? null;
+
+        if (array_key_exists('email', $validated)) {
+            $user->email = $validated['email'];
+        }
+
+        if (array_key_exists('phone_number', $validated)) {
+            $user->phone_number = $validated['phone_number'];
+        }
+
         $user->save();
 
         return response()->json([
             'message' => 'Cap nhat ho so thanh cong.',
-            'user' => $user->fresh(),
+            'user' => AuthenticatedUserResource::make($user->fresh()),
             'role' => $user->getRoleName(),
         ]);
     }
@@ -133,12 +121,24 @@ class AuthController extends Controller
         ]);
     }
 
-    public function getAllMembers()
+    public function getAllMembers(MemberIndexRequest $request)
     {
-        $members = Member::query()
-            ->orderBy('member_id')
-            ->get(['member_id', 'name', 'email', 'phone_number', 'join_date']);
+        $validated = $request->validated();
+        $query = Member::query()->orderBy('member_id');
+        $search = trim((string) ($validated['query'] ?? ''));
 
-        return response()->json($members);
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('phone_number', 'like', '%'.$search.'%');
+            });
+        }
+
+        $members = $query->paginate($validated['limit'] ?? 15, ['*'], 'page', $validated['page'] ?? 1)
+            ->withQueryString();
+
+        return MemberResource::collection($members);
     }
 }

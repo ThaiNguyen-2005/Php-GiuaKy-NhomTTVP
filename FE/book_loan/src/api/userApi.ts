@@ -1,12 +1,9 @@
 import type { AuthUser, UserRole } from '../auth/storage';
 import { apiRequest } from './client';
+import type { MemberApiRecord } from '../types/member';
 
-type Member = {
-  member_id: number;
-  name: string;
-  email?: string | null;
-  phone_number?: string | null;
-  join_date?: string | null;
+type PaginatedResponse<T> = {
+  data: T[];
 };
 
 type UpdateProfilePayload = {
@@ -29,8 +26,16 @@ type UpdateProfileResponse = {
   role: UserRole;
 };
 
+function unwrapCollection<T>(payload: T[] | PaginatedResponse<T>) {
+  return Array.isArray(payload) ? payload : payload.data;
+}
+
 export async function getAllMembers() {
-  return apiRequest<Member[]>('/members');
+  const data = await apiRequest<MemberApiRecord[] | PaginatedResponse<MemberApiRecord>>(
+    '/members?limit=1000'
+  );
+
+  return unwrapCollection(data);
 }
 
 export async function getMyProfile() {

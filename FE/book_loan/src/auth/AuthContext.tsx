@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useEffect, useContext, useMemo, useState } from 'react';
 import { logoutUser } from '../api/authApi';
+import { AUTH_EXPIRED_EVENT, type AuthExpiredEventDetail } from '../notifications/events';
 import {
   type AuthSession,
   type AuthUser,
@@ -23,6 +24,20 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSessionState] = useState<AuthSession | null>(() => getStoredSession());
+
+  useEffect(() => {
+    const handleAuthExpired = (event: Event) => {
+      const customEvent = event as CustomEvent<AuthExpiredEventDetail>;
+      if (customEvent.detail?.message) {
+        clearStoredSession();
+        setSessionState(null);
+      }
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener);
+
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener);
+  }, []);
 
   const setSession = (nextSession: AuthSession) => {
     setStoredSession(nextSession);

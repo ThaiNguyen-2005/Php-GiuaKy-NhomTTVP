@@ -3,9 +3,12 @@ export type UserRole = 'student' | 'admin';
 export type AuthUser = {
   member_id?: number;
   librarian_id?: number;
+  role?: UserRole;
   name: string;
   email?: string | null;
   phone_number?: string | null;
+  join_date?: string | null;
+  hire_date?: string | null;
 };
 
 export type AuthSession = {

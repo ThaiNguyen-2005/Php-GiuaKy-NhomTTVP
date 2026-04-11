@@ -5,6 +5,8 @@ import {
   returnBook,
   type BorrowRequest,
 } from '../../api/borrowApi';
+import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 
 type RequestTab = 'ALL' | 'BORROWED' | 'HISTORY';
 
@@ -93,8 +95,13 @@ export default function AdminRequests() {
       await approveBorrow(loanId);
       startTransition(() => applyOptimisticUpdate(loanId, 'borrowed'));
       void fetchRequests(false);
-    } catch (error: any) {
-      alert(error.message || 'Lỗi khi duyệt');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Lỗi khi duyệt');
+      emitToast({ tone: 'error', title: 'Không thể duyệt yêu cầu', message });
     } finally {
       setActiveRequestId(null);
     }
@@ -107,8 +114,13 @@ export default function AdminRequests() {
       await returnBook(loanId);
       startTransition(() => applyOptimisticUpdate(loanId, 'returned'));
       void fetchRequests(false);
-    } catch (error: any) {
-      alert(error.message || 'Lỗi khi trả sách');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Lỗi khi trả sách');
+      emitToast({ tone: 'error', title: 'Không thể nhận trả sách', message });
     } finally {
       setActiveRequestId(null);
     }

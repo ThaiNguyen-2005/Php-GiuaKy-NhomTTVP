@@ -5,8 +5,10 @@ use App\Http\Controllers\BookController;
 use App\Http\Controllers\BorrowController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+});
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/digital-documents', [BookController::class, 'getDigitalDocuments']);
 

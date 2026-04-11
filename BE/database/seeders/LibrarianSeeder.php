@@ -12,23 +12,23 @@ class LibrarianSeeder extends Seeder
     {
         $defaultPassword = env('LIBRARY_DEMO_PASSWORD', 'Library@2026');
 
-        DB::table('librarians')->insert([
+        DB::table('librarians')->upsert([
             [
                 'librarian_id' => 1,
-                'name' => 'Nail Horn',
-                'email' => 'nail@example.com',
+                'name' => 'Nguyen Van An',
+                'email' => 'nguyen.van.an@hcmue.edu.vn',
                 'password' => Hash::make($defaultPassword),
-                'phone_number' => '4567891230',
+                'phone_number' => '0912345678',
                 'hire_date' => '2026-03-17',
             ],
             [
                 'librarian_id' => 2,
-                'name' => 'Garden McGraw',
-                'email' => 'garden@example.com',
+                'name' => 'Tran Thi Mai',
+                'email' => 'tran.thi.mai@hcmue.edu.vn',
                 'password' => Hash::make($defaultPassword),
-                'phone_number' => '7894561230',
+                'phone_number' => '0987654321',
                 'hire_date' => '2026-03-17',
             ],
-        ]);
+        ], ['librarian_id'], ['name', 'email', 'password', 'phone_number', 'hire_date']);
     }
 }

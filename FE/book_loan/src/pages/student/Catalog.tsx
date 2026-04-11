@@ -1,32 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { requestBorrow } from '../../api/borrowApi';
 import { fetchBooks } from '../../api/bookApi';
-import { FormattedBook } from '../../types/book';
+import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
+import type { FormattedBook } from '../../types/book';
 
 export default function Catalog() {
-  const [selectedBook, setSelectedBook] = useState<any>(null);
+  const [selectedBook, setSelectedBook] = useState<FormattedBook | null>(null);
   const [books, setBooks] = useState<FormattedBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBorrowing, setIsBorrowing] = useState(false);
 
   useEffect(() => {
     fetchBooks()
       .then((data) => {
         setBooks(data);
-        setIsLoading(false);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error(error);
-        setIsLoading(false);
-      });
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleBorrow = async () => {
+    if (!selectedBook) {
+      return;
+    }
+
+    setIsBorrowing(true);
+
     try {
-      await requestBorrow(selectedBook.id);
-      alert('Yêu cầu mượn sách đã được gửi thành công!');
+      const response = await requestBorrow(selectedBook.id);
+      emitToast({
+        tone: 'success',
+        title: 'Đã gửi yêu cầu mượn',
+        message: response.message,
+      });
       setSelectedBook(null);
-    } catch (error: any) {
-      alert(error.message || 'Lỗi khi yêu cầu mượn sách');
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Lỗi khi yêu cầu mượn sách');
+      emitToast({
+        tone: 'error',
+        title: 'Không thể gửi yêu cầu mượn',
+        message,
+      });
+    } finally {
+      setIsBorrowing(false);
     }
   };
 
@@ -54,9 +77,10 @@ export default function Catalog() {
             <div className="col-span-full py-10 text-center">Đang tải biểu mẫu sách...</div>
           ) : (
             books.map((book) => (
-              <div
+              <button
                 key={book.id}
-                className={`group cursor-pointer ${book.status === 'Hết sách' ? 'opacity-80' : ''}`}
+                type="button"
+                className={`group cursor-pointer text-left ${book.status === 'Hết sách' ? 'opacity-80' : ''}`}
                 onClick={() => setSelectedBook(book)}
               >
                 <div className="scholar-shadow relative mb-4 aspect-[3/4] overflow-hidden rounded-xl bg-surface-container transition-transform duration-300 group-hover:-translate-y-2">
@@ -84,7 +108,7 @@ export default function Catalog() {
                 ) : (
                   <p className="mt-2 text-[10px] uppercase text-outline">Kệ: {book.location}</p>
                 )}
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -129,15 +153,16 @@ export default function Catalog() {
                     Trạng thái tại kho
                   </span>
                   <span className="mt-1 flex items-center gap-1 font-bold text-green-600">
-                    <span className="h-2 w-2 rounded-full bg-green-600"></span>
+                    <span className="h-2 w-2 rounded-full bg-green-600" />
                     Sẵn sàng cho mượn
                   </span>
                 </div>
                 <button
                   onClick={handleBorrow}
-                  className="rounded-xl bg-tertiary px-8 py-3 font-bold text-white shadow-lg shadow-tertiary/20 transition-transform hover:scale-[1.02] active:scale-95"
+                  disabled={isBorrowing}
+                  className="rounded-xl bg-tertiary px-8 py-3 font-bold text-white shadow-lg shadow-tertiary/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-wait disabled:opacity-60"
                 >
-                  Mượn ngay
+                  {isBorrowing ? 'Đang gửi...' : 'Mượn ngay'}
                 </button>
               </div>
             </div>

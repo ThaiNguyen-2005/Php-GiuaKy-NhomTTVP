@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('librarians', function (Blueprint $table) {
             $table->id('librarian_id');
             $table->string('name');
-            $table->string('email')->nullable();
+            $table->string('email')->nullable()->unique();
             $table->string('phone_number', 15)->nullable();
             $table->date('hire_date')->default(\Illuminate\Support\Facades\DB::raw('CURRENT_DATE'));
         });

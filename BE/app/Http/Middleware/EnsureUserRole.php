@@ -13,7 +13,7 @@ class EnsureUserRole
         $user = $request->user();
 
         if (! $user) {
-            return response()->json(['message' => 'Unauthorized.'], 401);
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $role = method_exists($user, 'getRoleName') ? $user->getRoleName() : null;

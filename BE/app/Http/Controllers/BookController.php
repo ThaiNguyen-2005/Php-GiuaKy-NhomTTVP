@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BookIndexRequest;
+use App\Http\Requests\BookUpsertRequest;
+use App\Http\Resources\BookResource;
+use App\Http\Resources\DigitalDocumentResource;
 use App\Models\Book;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class BookController extends Controller
 {
-    public function index(Request $request)
+    public function index(BookIndexRequest $request)
     {
+        $validated = $request->validated();
         $query = Book::query()->orderBy('book_id');
-        $search = $request->string('query')->trim()->value();
+        $search = trim((string) ($validated['query'] ?? ''));
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
@@ -22,13 +25,32 @@ class BookController extends Controller
             });
         }
 
-        return response()->json($query->get());
+        if (array_key_exists('genre', $validated) && $validated['genre'] !== null) {
+            $query->where('genre', $validated['genre']);
+        }
+
+        if (array_key_exists('is_available', $validated) && $validated['is_available'] !== null) {
+            $query->where('is_available', (bool) $validated['is_available']);
+        }
+
+        if (array_key_exists('is_digital', $validated) && $validated['is_digital'] !== null) {
+            $query->where('is_digital', (bool) $validated['is_digital']);
+        }
+
+        if (array_key_exists('resource_type', $validated) && $validated['resource_type'] !== null) {
+            $query->where('resource_type', $validated['resource_type']);
+        }
+
+        $books = $query->paginate($validated['limit'] ?? 15, ['*'], 'page', $validated['page'] ?? 1)
+            ->withQueryString();
+
+        return BookResource::collection($books);
     }
 
-    public function store(Request $request)
+    public function store(BookUpsertRequest $request)
     {
-        $validated = $this->validateBook($request);
-        $quantity = max(1, (int) ($validated['quantity'] ?? 1));
+        $validated = $request->validated();
+        $quantity = array_key_exists('quantity', $validated) ? (int) $validated['quantity'] : 1;
 
         $book = Book::query()->create([
             'title' => $validated['title'],
@@ -47,14 +69,14 @@ class BookController extends Controller
             'is_available' => $quantity > 0,
         ]);
 
-        return response()->json($book, 201);
+        return response()->json(new BookResource($book), 201);
     }
 
-    public function update(Request $request, Book $book)
+    public function update(BookUpsertRequest $request, Book $book)
     {
-        $validated = $this->validateBook($request);
+        $validated = $request->validated();
         $checkedOut = max(0, $book->total_quantity - $book->available_quantity);
-        $nextQuantity = isset($validated['quantity']) ? max(1, (int) $validated['quantity']) : $book->total_quantity;
+        $nextQuantity = array_key_exists('quantity', $validated) ? (int) $validated['quantity'] : $book->total_quantity;
 
         if ($nextQuantity < $checkedOut) {
             return response()->json([
@@ -65,14 +87,14 @@ class BookController extends Controller
         $book->fill([
             'title' => $validated['title'],
             'author' => $validated['author'],
-            'genre' => $validated['genre'] ?? null,
-            'published_year' => $validated['published_year'] ?? null,
-            'location' => $validated['location'] ?? null,
-            'cover' => $validated['cover'] ?? null,
+            'genre' => array_key_exists('genre', $validated) ? $validated['genre'] : $book->genre,
+            'published_year' => array_key_exists('published_year', $validated) ? $validated['published_year'] : $book->published_year,
+            'location' => array_key_exists('location', $validated) ? $validated['location'] : $book->location,
+            'cover' => array_key_exists('cover', $validated) ? $validated['cover'] : $book->cover,
             'is_digital' => (bool) ($validated['is_digital'] ?? $book->is_digital),
-            'resource_type' => $validated['resource_type'] ?? null,
-            'file_format' => $validated['file_format'] ?? null,
-            'file_size' => $validated['file_size'] ?? null,
+            'resource_type' => array_key_exists('resource_type', $validated) ? $validated['resource_type'] : $book->resource_type,
+            'file_format' => array_key_exists('file_format', $validated) ? $validated['file_format'] : $book->file_format,
+            'file_size' => array_key_exists('file_size', $validated) ? $validated['file_size'] : $book->file_size,
             'download_count' => (int) ($validated['download_count'] ?? $book->download_count),
         ]);
         $book->total_quantity = $nextQuantity;
@@ -80,18 +102,16 @@ class BookController extends Controller
         $book->is_available = $book->available_quantity > 0;
         $book->save();
 
-        return response()->json($book->fresh());
+        return response()->json(new BookResource($book->fresh()));
     }
 
     public function destroy(Book $book)
     {
-        $hasActiveBorrowing = $book->borrowings()
-            ->whereIn('status', ['pending', 'borrowed'])
-            ->exists();
+        $hasAnyBorrowing = $book->borrowings()->exists();
 
-        if ($hasActiveBorrowing) {
+        if ($hasAnyBorrowing) {
             return response()->json([
-                'message' => 'Khong the xoa sach dang co phieu muon hoac yeu cau cho xu ly.',
+                'message' => 'Khong the xoa sach da co lich su muon.',
             ], 422);
         }
 
@@ -108,47 +128,8 @@ class BookController extends Controller
             ->where('is_digital', true)
             ->orWhereNotNull('file_format')
             ->orderByDesc('download_count')
-            ->get()
-            ->map(function (Book $book) {
-                $format = strtoupper($book->file_format ?: 'PDF');
+            ->get();
 
-                return [
-                    'id' => $book->book_id,
-                    'title' => $book->title,
-                    'author' => $book->author,
-                    'type' => $book->resource_type ?: ($book->genre ?: 'Tai lieu'),
-                    'format' => $format,
-                    'size' => $book->file_size ?: 'N/A',
-                    'color' => match ($format) {
-                        'PDF' => 'bg-red-500',
-                        'EPUB' => 'bg-blue-500',
-                        'AUDIO' => 'bg-purple-500',
-                        'SLIDES' => 'bg-orange-500',
-                        default => 'bg-primary',
-                    },
-                    'cover' => $book->cover,
-                    'downloads' => $book->download_count,
-                ];
-            });
-
-        return response()->json($documents);
-    }
-
-    private function validateBook(Request $request): array
-    {
-        return $request->validate([
-            'title' => 'required|string|max:255',
-            'author' => 'required|string|max:255',
-            'genre' => 'nullable|string|max:100',
-            'published_year' => 'nullable|integer|min:1900|max:2100',
-            'location' => 'nullable|string|max:100',
-            'cover' => 'nullable|url|max:2048',
-            'quantity' => 'nullable|integer|min:1|max:999',
-            'is_digital' => 'nullable|boolean',
-            'resource_type' => 'nullable|string|max:50',
-            'file_format' => ['nullable', 'string', Rule::in(['PDF', 'EPUB', 'AUDIO', 'SLIDES'])],
-            'file_size' => 'nullable|string|max:20',
-            'download_count' => 'nullable|integer|min:0',
-        ]);
+        return DigitalDocumentResource::collection($documents);
     }
 }

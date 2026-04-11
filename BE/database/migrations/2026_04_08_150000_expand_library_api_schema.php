@@ -18,44 +18,34 @@ return new class extends Migration
             $table->unsignedInteger('download_count')->default(0)->after('file_size');
             $table->index('genre');
             $table->index('is_available');
+            $table->index('is_digital');
+            $table->index('file_format');
+            $table->index('download_count');
         });
 
         Schema::table('borrowing', function (Blueprint $table) {
             $table->date('due_date')->nullable()->after('borrow_date');
-            $table->index('status');
-            $table->index('member_id');
-            $table->index('book_id');
-        });
-
-        Schema::table('members', function (Blueprint $table) {
-            $table->index('email');
-        });
-
-        Schema::table('librarians', function (Blueprint $table) {
-            $table->index('email');
+            $table->index(['status', 'member_id']);
+            $table->index(['status', 'book_id']);
+            $table->index('borrow_date');
         });
     }
 
     public function down(): void
     {
-        Schema::table('librarians', function (Blueprint $table) {
-            $table->dropIndex(['email']);
-        });
-
-        Schema::table('members', function (Blueprint $table) {
-            $table->dropIndex(['email']);
-        });
-
         Schema::table('borrowing', function (Blueprint $table) {
-            $table->dropIndex(['status']);
-            $table->dropIndex(['member_id']);
-            $table->dropIndex(['book_id']);
+            $table->dropIndex(['status', 'member_id']);
+            $table->dropIndex(['status', 'book_id']);
+            $table->dropIndex(['borrow_date']);
             $table->dropColumn('due_date');
         });
 
         Schema::table('books', function (Blueprint $table) {
             $table->dropIndex(['genre']);
             $table->dropIndex(['is_available']);
+            $table->dropIndex(['is_digital']);
+            $table->dropIndex(['file_format']);
+            $table->dropIndex(['download_count']);
             $table->dropColumn([
                 'cover',
                 'location',

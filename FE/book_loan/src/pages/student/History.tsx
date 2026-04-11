@@ -1,31 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { getMyRequests } from '../../api/borrowApi';
+import type { MemberBorrowRequest } from '../../types/request';
+
+type HistoryItem = {
+  id: string;
+  book: string;
+  author: string;
+  borrowDate: string;
+  returnDate: string;
+  status: string;
+  color: string;
+};
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString('vi-VN') : '—';
+}
 
 export default function History() {
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     getMyRequests()
-      .then((data) => {
+      .then((data: MemberBorrowRequest[]) => {
         const returned = data.filter((r) => r.status === 'returned');
         setHistory(
           returned.map((r) => ({
             id: `H-${r.id}`,
             book: r.bookTitle,
             author: r.author,
-            borrowDate: r.borrow_date
-              ? new Date(r.borrow_date).toLocaleDateString('vi-VN')
-              : '—',
-            returnDate: r.return_date
-              ? new Date(r.return_date).toLocaleDateString('vi-VN')
-              : '—',
+            borrowDate: formatDate(r.borrow_date),
+            returnDate: formatDate(r.return_date),
             status: 'Đúng hạn',
             color: 'text-green-600 bg-green-50',
           })),
         );
       })
-      .catch(console.error)
+      .catch((error: unknown) => {
+        console.error(error);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -62,7 +75,7 @@ export default function History() {
               history.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/50">
                   <td className="px-6 py-4">
-                    <span className="text-xs font-mono font-bold text-slate-500">{item.id}</span>
+                    <span className="font-mono text-xs font-bold text-slate-500">{item.id}</span>
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm font-bold text-slate-800">{item.book}</p>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, registerStudent } from '../../api/authApi';
 import { useAuth } from '../../auth/AuthContext';
+import { getErrorMessage } from '../../lib/errors';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -33,8 +34,8 @@ export default function Login() {
       });
 
       navigate(response.role === 'admin' ? '/admin/dashboard' : '/home');
-    } catch (error: any) {
-      setErrorMsg(error.message || 'Không thể kết nối tới máy chủ.');
+    } catch (error: unknown) {
+      setErrorMsg(getErrorMessage(error, 'Không thể kết nối tới máy chủ.'));
     } finally {
       setIsLoading(false);
     }
@@ -94,22 +95,20 @@ export default function Login() {
 
             <div className="mb-6 flex gap-8 border-b border-surface-container-high">
               <button
-                className={`pb-4 text-sm font-semibold transition-colors ${
-                  isLogin
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
+                className={`pb-4 text-sm font-semibold transition-colors ${isLogin
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-slate-400 hover:text-slate-600'
+                  }`}
                 onClick={() => setIsLogin(true)}
               >
                 Đăng nhập
               </button>
               <button
                 type="button"
-                className={`pb-4 text-sm font-semibold transition-colors ${
-                  !isLogin
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
+                className={`pb-4 text-sm font-semibold transition-colors ${!isLogin
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-slate-400 hover:text-slate-600'
+                  }`}
                 onClick={() => {
                   setIsLogin(false);
                   setSelectedRole('student');
@@ -204,7 +203,7 @@ export default function Login() {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="user@example.com hoặc MSSV..."
+                    placeholder="MSSV"
                     className="w-full rounded-lg border-none bg-surface-container-low py-3 pl-11 pr-4 text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-primary"
                     required
                   />
@@ -218,7 +217,6 @@ export default function Login() {
                   </label>
                   {isLogin && (
                     <a href="#" className="text-xs font-semibold text-primary hover:underline">
-                      Quên mật khẩu?
                     </a>
                   )}
                 </div>
@@ -245,9 +243,8 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98] ${
-                  isLoading ? 'cursor-wait bg-primary/70' : 'bg-primary hover:bg-blue-700'
-                }`}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-bold text-white shadow-xl shadow-blue-900/20 transition-all active:scale-[0.98] ${isLoading ? 'cursor-wait bg-primary/70' : 'bg-primary hover:bg-blue-700'
+                  }`}
               >
                 {isLoading ? (
                   <>

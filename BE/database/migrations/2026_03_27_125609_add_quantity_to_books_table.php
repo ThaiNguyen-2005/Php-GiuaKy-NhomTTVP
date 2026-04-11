@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('books', function (Blueprint $table) {
-            $table->integer('total_quantity')->default(1);
-            $table->integer('available_quantity')->default(1);
+            $table->unsignedInteger('total_quantity')->default(1);
+            $table->unsignedInteger('available_quantity')->default(1);
         });
     }
 

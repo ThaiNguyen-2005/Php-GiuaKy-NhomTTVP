@@ -1,14 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { getMyRequests } from '../../api/borrowApi';
+import type { MemberBorrowRequest } from '../../types/request';
+
+type BorrowedBookCard = {
+  id: number;
+  title: string;
+  author: string;
+  type: string;
+  typeColor: string;
+  cover?: string | null;
+  borrowDate: string;
+  dueDate: string;
+  daysLeft: number;
+  isWarning: boolean;
+};
+
+type HistoryBookRow = {
+  id: number;
+  title: string;
+  author: string;
+  borrowDate: string;
+  returnDate: string;
+};
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString('vi-VN') : '—';
+}
 
 export default function MyBooks() {
   const [activeTab, setActiveTab] = useState<'borrowed' | 'history'>('borrowed');
-  const [borrowedBooks, setBorrowedBooks] = useState<any[]>([]);
-  const [historyBooks, setHistoryBooks] = useState<any[]>([]);
+  const [borrowedBooks, setBorrowedBooks] = useState<BorrowedBookCard[]>([]);
+  const [historyBooks, setHistoryBooks] = useState<HistoryBookRow[]>([]);
 
   useEffect(() => {
     getMyRequests()
-      .then((data) => {
+      .then((data: MemberBorrowRequest[]) => {
         const borrowed = data.filter((req) => req.status === 'borrowed');
         const mappedBorrowed = borrowed.map((req) => {
           const dueDate = req.due_date ? new Date(req.due_date) : null;
@@ -20,13 +46,11 @@ export default function MyBooks() {
             id: req.id,
             title: req.bookTitle,
             author: req.author,
-            type: req.category,
+            type: req.category || 'Tài liệu',
             typeColor: diffDays <= 3 ? 'text-tertiary' : 'text-primary',
             cover: req.cover,
-            borrowDate: req.borrow_date
-              ? new Date(req.borrow_date).toLocaleDateString('vi-VN')
-              : '—',
-            dueDate: dueDate ? dueDate.toLocaleDateString('vi-VN') : '—',
+            borrowDate: formatDate(req.borrow_date),
+            dueDate: formatDate(req.due_date),
             daysLeft: diffDays,
             isWarning: diffDays <= 3,
           };
@@ -39,17 +63,15 @@ export default function MyBooks() {
             id: req.id,
             title: req.bookTitle,
             author: req.author,
-            borrowDate: req.borrow_date
-              ? new Date(req.borrow_date).toLocaleDateString('vi-VN')
-              : '—',
-            returnDate: req.return_date
-              ? new Date(req.return_date).toLocaleDateString('vi-VN')
-              : '—',
+            borrowDate: formatDate(req.borrow_date),
+            returnDate: formatDate(req.return_date),
           }));
 
         setHistoryBooks(history);
       })
-      .catch(console.error);
+      .catch((error: unknown) => {
+        console.error(error);
+      });
   }, []);
 
   return (
@@ -98,7 +120,7 @@ export default function MyBooks() {
             >
               <div className="flex gap-4">
                 <div className="aspect-[3/4] w-24 shrink-0 overflow-hidden rounded-lg bg-surface-container">
-                  <img src={book.cover} alt={book.title} className="h-full w-full object-cover" />
+                  <img src={book.cover || ''} alt={book.title} className="h-full w-full object-cover" />
                 </div>
                 <div className="flex flex-col justify-between">
                   <div>
