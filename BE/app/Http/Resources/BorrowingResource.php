@@ -15,6 +15,8 @@ class BorrowingResource extends JsonResource
             'member_id' => $this->member_id,
             'librarian_id' => $this->librarian_id,
             'status' => $this->status,
+            'rejection_reason' => $this->rejection_reason,
+            'rejected_at' => $this->rejected_at?->toISOString(),
             'borrow_date' => $this->borrow_date?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
             'return_date' => $this->return_date?->toDateString(),

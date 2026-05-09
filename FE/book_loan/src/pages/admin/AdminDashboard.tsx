@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchBooks } from '../../api/bookApi';
+import { useNavigate } from 'react-router-dom';
+import { deleteBook, fetchBooks } from '../../api/bookApi';
 import {
   approveBorrow,
   getAllRequests,
+  rejectBorrow,
   returnBook,
   type BorrowRequest,
 } from '../../api/borrowApi';
@@ -21,6 +23,9 @@ type DashboardInventoryBook = {
   status: string;
   statusColor: string;
   cover: string;
+  isDigital: boolean;
+  quantity: number;
+  availableQuantity: number;
 };
 
 type DashboardStats = {
@@ -46,6 +51,8 @@ const INITIAL_STATS: DashboardStats = {
   books: 0,
   members: 0,
 };
+
+const INVENTORY_PAGE_SIZE = 5;
 
 function normalizeIdentifier(value: string | number | null | undefined) {
   return String(value ?? '').trim();
@@ -73,10 +80,14 @@ function mapInventoryBook(book: FormattedBook): DashboardInventoryBook {
     status: book.is_available ? 'Sẵn có' : 'Đang mượn',
     statusColor: book.is_available ? 'bg-green-500' : 'bg-tertiary',
     cover: book.cover,
+    isDigital: book.is_digital,
+    quantity: book.quantity,
+    availableQuantity: book.available_quantity,
   };
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [pendingRequests, setPendingRequests] = useState<BorrowRequest[]>([]);
   const [recentReturns, setRecentReturns] = useState<BorrowRequest[]>([]);
   const [inventoryBooks, setInventoryBooks] = useState<DashboardInventoryBook[]>([]);
@@ -85,6 +96,9 @@ export default function AdminDashboard() {
   const [quickForm, setQuickForm] = useState<QuickActionForm>({ memberId: '', bookId: '' });
   const [quickFeedback, setQuickFeedback] = useState<QuickActionFeedback | null>(null);
   const [loadingAction, setLoadingAction] = useState<'borrow' | 'return' | null>(null);
+  const [inventoryFilter, setInventoryFilter] = useState<'all' | 'paper' | 'digital' | 'reference'>('all');
+  const [inventorySort, setInventorySort] = useState<'newest' | 'title' | 'quantity'>('newest');
+  const [inventoryPage, setInventoryPage] = useState(1);
 
   const loadDashboard = async () => {
     try {
@@ -119,6 +133,55 @@ export default function AdminDashboard() {
   useEffect(() => {
     void loadDashboard();
   }, []);
+
+  const filteredInventoryBooks = useMemo(() => {
+    const filtered = inventoryBooks.filter((book) => {
+      if (inventoryFilter === 'paper') {
+        return !book.isDigital;
+      }
+
+      if (inventoryFilter === 'digital') {
+        return book.isDigital;
+      }
+
+      if (inventoryFilter === 'reference') {
+        return book.category.toLowerCase().includes('tham') || book.category.toLowerCase().includes('reference');
+      }
+
+      return true;
+    });
+
+    return [...filtered].sort((first, second) => {
+      if (inventorySort === 'title') {
+        return first.title.localeCompare(second.title, 'vi');
+      }
+
+      if (inventorySort === 'quantity') {
+        return second.quantity - first.quantity;
+      }
+
+      return second.id - first.id;
+    });
+  }, [inventoryBooks, inventoryFilter, inventorySort]);
+
+  const inventoryTotalPages = Math.max(
+    1,
+    Math.ceil(filteredInventoryBooks.length / INVENTORY_PAGE_SIZE),
+  );
+  const visibleInventoryBooks = filteredInventoryBooks.slice(
+    (inventoryPage - 1) * INVENTORY_PAGE_SIZE,
+    inventoryPage * INVENTORY_PAGE_SIZE,
+  );
+  const inventoryStartItem =
+    filteredInventoryBooks.length === 0 ? 0 : (inventoryPage - 1) * INVENTORY_PAGE_SIZE + 1;
+  const inventoryEndItem = Math.min(
+    filteredInventoryBooks.length,
+    inventoryPage * INVENTORY_PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setInventoryPage((currentPage) => Math.min(currentPage, inventoryTotalPages));
+  }, [inventoryTotalPages]);
 
   const quickActionHint = useMemo(() => {
     if (!quickForm.memberId && !quickForm.bookId) {
@@ -247,6 +310,88 @@ export default function AdminDashboard() {
     }
   };
 
+  const handlePendingReject = async (loanId: number) => {
+    if (!confirm('Từ chối yêu cầu này từ dashboard?')) {
+      return;
+    }
+
+    try {
+      await rejectBorrow(loanId, 'Từ chối nhanh từ dashboard.');
+      emitToast({
+        tone: 'success',
+        title: 'Đã từ chối yêu cầu',
+        message: `Phiếu #${loanId} đã được chuyển sang danh sách từ chối.`,
+      });
+      await loadDashboard();
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể từ chối yêu cầu lúc này.');
+      emitToast({ tone: 'error', title: 'Không thể từ chối yêu cầu', message });
+    }
+  };
+
+  const handleInventoryDelete = async (book: DashboardInventoryBook) => {
+    if (!confirm(`Xóa "${book.title}" khỏi kho sách?`)) {
+      return;
+    }
+
+    try {
+      await deleteBook(book.id);
+      emitToast({
+        tone: 'success',
+        title: 'Đã xóa sách',
+        message: `"${book.title}" đã được xóa khỏi kho.`,
+      });
+      await loadDashboard();
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể xóa sách lúc này.');
+      emitToast({ tone: 'error', title: 'Không thể xóa sách', message });
+    }
+  };
+
+  const handleExportInventory = () => {
+    if (filteredInventoryBooks.length === 0) {
+      emitToast({
+        tone: 'info',
+        title: 'Không có dữ liệu xuất',
+        message: 'Bộ lọc kho sách hiện tại không có bản ghi.',
+      });
+      return;
+    }
+
+    const rows = [
+      ['Book ID', 'Title', 'Author', 'Category', 'Location', 'Total', 'Available', 'Status'],
+      ...filteredInventoryBooks.map((book) => [
+        String(book.id),
+        book.title,
+        book.author,
+        book.category,
+        book.location,
+        String(book.quantity),
+        String(book.availableQuantity),
+        book.status,
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => `"${value.replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'inventory-export.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -372,7 +517,11 @@ export default function AdminDashboard() {
                   Danh sách các yêu cầu đang chờ xử lý từ sinh viên
                 </p>
               </div>
-              <button className="flex items-center gap-2 text-sm text-primary font-medium hover:underline">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/requests')}
+                className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+              >
                 <span className="material-symbols-outlined text-base">filter_list</span>
                 Lọc
               </button>
@@ -415,7 +564,11 @@ export default function AdminDashboard() {
                           >
                             Duyệt
                           </button>
-                          <button className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => handlePendingReject(request.id)}
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
+                          >
                             <span className="material-symbols-outlined text-lg">close</span>
                           </button>
                         </div>
@@ -426,7 +579,11 @@ export default function AdminDashboard() {
               </table>
             </div>
             <div className="p-4 bg-surface-container-low flex items-center justify-center border-t border-surface-container mt-auto">
-              <button className="text-xs font-bold text-primary uppercase tracking-widest hover:underline">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/requests')}
+                className="text-xs font-bold text-primary uppercase tracking-widest hover:underline"
+              >
                 Xem tất cả yêu cầu
               </button>
             </div>
@@ -443,11 +600,20 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-6 py-3 bg-primary text-white rounded-xl font-semibold flex items-center gap-2 scholar-shadow hover:-translate-y-0.5 transition-all">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/inventory')}
+              className="px-6 py-3 bg-primary text-white rounded-xl font-semibold flex items-center gap-2 scholar-shadow hover:-translate-y-0.5 transition-all"
+            >
               <span className="material-symbols-outlined">add</span>
               Thêm sách mới
             </button>
-            <button className="p-3 bg-surface-container text-on-surface-variant rounded-xl hover:bg-surface-container-high transition-all">
+            <button
+              type="button"
+              onClick={handleExportInventory}
+              className="p-3 bg-surface-container text-on-surface-variant rounded-xl hover:bg-surface-container-high transition-all"
+              title="Xuất danh sách kho"
+            >
               <span className="material-symbols-outlined">file_download</span>
             </button>
           </div>
@@ -455,18 +621,44 @@ export default function AdminDashboard() {
 
         <div className="p-8 space-y-6">
           <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-2">
-              <button className="px-4 py-2 rounded-full bg-primary text-white text-xs font-medium">Tất cả</button>
-              <button className="px-4 py-2 rounded-full bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high">Sách giấy</button>
-              <button className="px-4 py-2 rounded-full bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high">E-Book</button>
-              <button className="px-4 py-2 rounded-full bg-surface-container text-on-surface-variant text-xs font-medium hover:bg-surface-container-high">Tài liệu tham khảo</button>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'Tất cả', value: 'all' },
+                { label: 'Sách giấy', value: 'paper' },
+                { label: 'E-Book', value: 'digital' },
+                { label: 'Tài liệu tham khảo', value: 'reference' },
+              ].map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => {
+                    setInventoryFilter(filter.value as typeof inventoryFilter);
+                    setInventoryPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-full text-xs font-medium transition-colors ${
+                    inventoryFilter === filter.value
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-outline">Sắp xếp:</span>
-              <select aria-label="Sắp xếp danh sách sách" className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none">
-                <option>Mới nhất</option>
-                <option>Tên A-Z</option>
-                <option>Số lượng</option>
+              <select
+                aria-label="Sắp xếp danh sách sách"
+                value={inventorySort}
+                onChange={(event) => {
+                  setInventorySort(event.target.value as typeof inventorySort);
+                  setInventoryPage(1);
+                }}
+                className="text-xs font-medium border-none bg-transparent focus:ring-0 cursor-pointer outline-none"
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="title">Tên A-Z</option>
+                <option value="quantity">Số lượng</option>
               </select>
             </div>
           </div>
@@ -484,61 +676,110 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container">
-                {inventoryBooks.map((book) => (
-                  <tr key={book.id} className="hover:bg-surface-container/30 transition-all">
-                    <td className="px-6 py-4">
-                      <div className="w-12 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-surface-container">
-                        <img src={book.cover} alt={book.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="max-w-xs">
-                        <p className="text-sm font-bold text-on-surface line-clamp-1">{book.title}</p>
-                        <p className="text-xs text-outline mt-0.5">Tác giả: {book.author}</p>
-                        <p className="text-[10px] font-mono text-primary mt-1">ISBN: {book.isbn}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase">
-                        {book.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium">{book.location}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${book.statusColor}`}></div>
-                        <span className="text-xs font-medium">{book.status}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button className="p-2 rounded-lg text-primary hover:bg-primary-container transition-all">
-                          <span className="material-symbols-outlined text-lg">edit</span>
-                        </button>
-                        <button className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all">
-                          <span className="material-symbols-outlined text-lg">history</span>
-                        </button>
-                        <button className="p-2 rounded-lg text-tertiary hover:bg-tertiary-container transition-all">
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
-                      </div>
+                {visibleInventoryBooks.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-sm text-outline">
+                      Không có sách phù hợp với bộ lọc hiện tại.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  visibleInventoryBooks.map((book) => (
+                    <tr key={book.id} className="hover:bg-surface-container/30 transition-all">
+                      <td className="px-6 py-4">
+                        <div className="w-12 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-surface-container">
+                          <img src={book.cover} alt={book.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          <p className="text-sm font-bold text-on-surface line-clamp-1">{book.title}</p>
+                          <p className="text-xs text-outline mt-0.5">Tác giả: {book.author}</p>
+                          <p className="text-[10px] font-mono text-primary mt-1">ISBN: {book.isbn}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase">
+                          {book.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium">{book.location}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${book.statusColor}`}></div>
+                          <span className="text-xs font-medium">{book.status}</span>
+                        </div>
+                        <p className="mt-1 text-[10px] text-outline">
+                          {book.availableQuantity}/{book.quantity} bản
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/inventory?search=${encodeURIComponent(book.title)}`)}
+                            className="p-2 rounded-lg text-primary hover:bg-primary-container transition-all"
+                            title="Mở trong kho sách"
+                          >
+                            <span className="material-symbols-outlined text-lg">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/admin/requests?book=${book.id}`)}
+                            className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all"
+                            title="Xem lịch sử mượn"
+                          >
+                            <span className="material-symbols-outlined text-lg">history</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInventoryDelete(book)}
+                            className="p-2 rounded-lg text-tertiary hover:bg-tertiary-container transition-all"
+                            title="Xóa sách"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="flex items-center justify-between pt-4">
-            <p className="text-xs text-outline">Hiển thị 1 - 10 trong tổng số {inventoryBooks.length} sách</p>
+            <p className="text-xs text-outline">
+              Hiển thị {inventoryStartItem} - {inventoryEndItem} trong tổng số {filteredInventoryBooks.length} sách
+            </p>
             <div className="flex gap-1">
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all">
+              <button
+                type="button"
+                onClick={() => setInventoryPage((currentPage) => Math.max(1, currentPage - 1))}
+                disabled={inventoryPage === 1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <span className="material-symbols-outlined text-sm">chevron_left</span>
               </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary text-white font-bold text-xs">1</button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all text-xs">2</button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all text-xs">3</button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all">
+              {Array.from({ length: inventoryTotalPages }, (_, index) => index + 1).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setInventoryPage(pageNumber)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                    inventoryPage === pageNumber
+                      ? 'bg-primary text-white'
+                      : 'border border-surface-container hover:bg-surface-container transition-all'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setInventoryPage((currentPage) => Math.min(inventoryTotalPages, currentPage + 1))}
+                disabled={inventoryPage === inventoryTotalPages}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-container hover:bg-surface-container transition-all disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
               </button>
             </div>
@@ -579,7 +820,11 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="px-8 py-4 text-right">
-                      <button className="px-4 py-2 bg-surface-container text-on-surface text-xs font-bold rounded-lg hover:bg-surface-container-high transition-all">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/admin/requests')}
+                        className="px-4 py-2 bg-surface-container text-on-surface text-xs font-bold rounded-lg hover:bg-surface-container-high transition-all"
+                      >
                         Chi tiết
                       </button>
                     </td>
@@ -594,9 +839,15 @@ export default function AdminDashboard() {
       <footer className="mt-auto border-t border-surface-container py-6 flex flex-col md:flex-row items-center justify-between text-[10px] font-bold text-outline uppercase tracking-widest">
         <p>© 2023 HCMUE DIGITAL LIBRARY SYSTEM - LIBRARIAN PANEL V2.4</p>
         <div className="flex gap-6 mt-4 md:mt-0">
-          <a href="#" className="hover:text-primary transition-colors">Hướng dẫn sử dụng</a>
-          <a href="#" className="hover:text-primary transition-colors">Báo cáo sự cố</a>
-          <a href="#" className="hover:text-primary transition-colors">Chính sách bảo mật</a>
+          <button type="button" onClick={() => navigate('/admin/reports')} className="hover:text-primary transition-colors">
+            Hướng dẫn sử dụng
+          </button>
+          <a href="mailto:it-support@hcmue.edu.vn?subject=Library%20system%20incident" className="hover:text-primary transition-colors">
+            Báo cáo sự cố
+          </a>
+          <button type="button" onClick={() => navigate('/admin/settings')} className="hover:text-primary transition-colors">
+            Chính sách bảo mật
+          </button>
         </div>
       </footer>
     </div>

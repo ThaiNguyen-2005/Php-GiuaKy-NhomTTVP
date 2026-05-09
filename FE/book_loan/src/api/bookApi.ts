@@ -20,6 +20,12 @@ type BookPayload = {
   location?: string;
   cover?: string;
   quantity?: number;
+  is_digital?: boolean;
+  resource_type?: string;
+  file_format?: string;
+  file_size?: string;
+  file_path?: string;
+  file_url?: string;
 };
 
 function toStatusColor(isAvailable: boolean) {
@@ -57,6 +63,7 @@ function normalizeBook(book: BookApiRecord): FormattedBook {
     available_quantity: availableQuantity,
     published_year: book.published_year || undefined,
     is_available: isAvailable,
+    is_digital: Boolean(book.is_digital),
   };
 }
 
@@ -129,6 +136,9 @@ export async function fetchDigitalDocuments() {
                 : 'bg-primary',
       cover: book.cover,
       downloads: Number(book.download_count ?? 0),
+      openUrl: book.open_url || null,
+      downloadUrl: book.download_url || book.open_url || null,
+      hasAttachedFile: Boolean(book.has_attached_file),
     } satisfies DigitalDocumentType;
   });
 }

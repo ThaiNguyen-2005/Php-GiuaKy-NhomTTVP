@@ -11,8 +11,11 @@ const rawBaseUrl =
 const API_BASE_URL = rawBaseUrl.replace(/\/$/, '');
 
 type ApiOptions = Omit<RequestInit, 'body'> & {
+  auth?: boolean;
   body?: unknown;
 };
+
+type RequestOptions = Omit<ApiOptions, 'auth'>;
 
 type CacheEntry = {
   expiresAt: number;
@@ -32,7 +35,7 @@ function invalidateResponseCache() {
 
 async function performRequest<T>(
   url: string,
-  options: ApiOptions,
+  options: RequestOptions,
   headers: Headers,
   token: string | null,
 ) {
@@ -72,12 +75,17 @@ async function performRequest<T>(
 }
 
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  const token = getStoredToken();
-  const method = (options.method || 'GET').toUpperCase();
+  const { auth = true, ...requestOptions } = options;
+  const headers = new Headers(requestOptions.headers);
+  const token = auth ? getStoredToken() : null;
+  const method = (requestOptions.method || 'GET').toUpperCase();
   const url = buildRequestUrl(path);
 
-  if (options.body !== undefined) {
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
+  if (requestOptions.body !== undefined) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -85,7 +93,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  if (method === 'GET' && !options.signal) {
+  if (method === 'GET' && !requestOptions.signal) {
     const cacheKey = `${token ?? 'guest'}:${url}`;
     const cached = responseCache.get(cacheKey);
 
@@ -99,7 +107,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
       }
     }
 
-    const promise = performRequest<T>(url, options, headers, token)
+    const promise = performRequest<T>(url, requestOptions, headers, token)
       .then((payload) => {
         responseCache.set(cacheKey, {
           expiresAt: Date.now() + GET_CACHE_TTL_MS,
@@ -121,7 +129,7 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     return promise;
   }
 
-  const payload = await performRequest<T>(url, options, headers, token);
+  const payload = await performRequest<T>(url, requestOptions, headers, token);
   invalidateResponseCache();
   return payload;
 }

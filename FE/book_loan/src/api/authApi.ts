@@ -14,6 +14,7 @@ function isValidEmail(value: string) {
 
 export async function loginUser(role: UserRole, identifier: string, password: string) {
   return apiRequest<AuthResponse>('/login', {
+    auth: false,
     method: 'POST',
     body: { role, identifier, password },
   });
@@ -30,6 +31,7 @@ export async function registerStudent(
   }
 
   return apiRequest<AuthResponse>('/register', {
+    auth: false,
     method: 'POST',
     body: {
       name,

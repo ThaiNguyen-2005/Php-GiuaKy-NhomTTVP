@@ -88,7 +88,7 @@ export default function Header() {
                     <button
                       key={book.id}
                       onClick={() => {
-                        navigate('/catalog');
+                        navigate(`/catalog?book=${book.id}`);
                         setShowDropdown(false);
                         setQuery('');
                       }}
@@ -112,7 +112,7 @@ export default function Header() {
                   ))}
                   <button
                     onClick={() => {
-                      navigate('/catalog');
+                      navigate(`/catalog?q=${encodeURIComponent(query.trim())}`);
                       setShowDropdown(false);
                       setQuery('');
                     }}

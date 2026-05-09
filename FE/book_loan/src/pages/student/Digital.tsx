@@ -90,6 +90,38 @@ export default function Digital() {
                     <span className="font-medium">{resource.downloads}</span>
                   </div>
                 </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={!resource.openUrl}
+                    onClick={() => {
+                      if (resource.openUrl) {
+                        window.open(resource.openUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-surface-container-high disabled:text-outline"
+                  >
+                    Mở tệp
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!resource.downloadUrl}
+                    onClick={() => {
+                      if (resource.downloadUrl) {
+                        window.open(resource.downloadUrl, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    className="rounded-lg border border-surface-container-high px-3 py-2 text-xs font-bold text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-outline"
+                  >
+                    Tải về
+                  </button>
+                </div>
+                {!resource.hasAttachedFile ? (
+                  <p className="mt-2 text-[10px] text-on-surface-variant">
+                    Bản ghi này đang dùng tệp xem trước cho đến khi thủ thư gắn tài liệu thật.
+                  </p>
+                ) : null}
               </div>
             </div>
           ))

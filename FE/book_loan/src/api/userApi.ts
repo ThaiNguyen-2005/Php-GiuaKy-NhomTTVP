@@ -1,6 +1,6 @@
 import type { AuthUser, UserRole } from '../auth/storage';
 import { apiRequest } from './client';
-import type { MemberApiRecord } from '../types/member';
+import type { MemberApiRecord, MemberPayload } from '../types/member';
 
 type PaginatedResponse<T> = {
   data: T[];
@@ -36,6 +36,26 @@ export async function getAllMembers() {
   );
 
   return unwrapCollection(data);
+}
+
+export async function createMember(payload: MemberPayload) {
+  return apiRequest<MemberApiRecord>('/members', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateMember(memberId: number, payload: MemberPayload) {
+  return apiRequest<MemberApiRecord>(`/members/${memberId}`, {
+    method: 'PUT',
+    body: payload,
+  });
+}
+
+export async function deleteMember(memberId: number) {
+  return apiRequest<{ message: string }>(`/members/${memberId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function getMyProfile() {

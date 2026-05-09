@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         RateLimiter::for('auth', function (Request $request): Limit {
-            $identifier = trim((string) $request->input('identifier', ''));
+            $identifier = trim((string) ($request->input('identifier') ?? $request->input('email') ?? ''));
 
             return Limit::perMinute(5)->by($request->ip().'|'.$identifier);
         });

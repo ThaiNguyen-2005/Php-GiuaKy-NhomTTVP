@@ -51,7 +51,7 @@ export default function AdminSettings() {
         <div>
           <h2 className="text-3xl font-bold text-on-surface">Cài đặt hệ thống</h2>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Cấu hình tham số thư viện và quy tắc vận hành.
+            Các tham số này được lưu trên trình duyệt hiện tại để hỗ trợ thao tác demo.
           </p>
         </div>
         <button
@@ -61,6 +61,10 @@ export default function AdminSettings() {
           <span className="material-symbols-outlined text-sm">save</span>
           {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </button>
+      </div>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {/* Cấu hình ở trang này chưa được đồng bộ toàn hệ thống. Quy tắc nghiệp vụ thật vẫn do Laravel API xử lý. */}
       </div>
 
       {feedback ? (

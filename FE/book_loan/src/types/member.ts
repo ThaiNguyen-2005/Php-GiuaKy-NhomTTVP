@@ -12,6 +12,17 @@ export interface MemberListItem {
   dept: string;
   type: string;
   email: string;
+  phoneNumber: string;
+  joinDate: string;
   status: string;
   statusColor: string;
 }
+
+export type MemberPayload = {
+  name: string;
+  email: string;
+  phone_number?: string | null;
+  join_date?: string | null;
+  password?: string;
+  password_confirmation?: string;
+};

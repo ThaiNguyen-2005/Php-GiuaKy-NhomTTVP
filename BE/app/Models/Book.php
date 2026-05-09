@@ -28,6 +28,8 @@ class Book extends Model
         'resource_type',
         'file_format',
         'file_size',
+        'file_path',
+        'file_url',
         'download_count',
         'total_quantity',
         'available_quantity',

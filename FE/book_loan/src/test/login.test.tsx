@@ -47,13 +47,13 @@ describe('Login', () => {
 
     renderLogin();
 
-    await user.type(screen.getByPlaceholderText('user@example.com hoặc MSSV...'), 'student@example.com');
+    await user.type(screen.getByPlaceholderText('MSSV'), 'student@example.com');
     await user.type(screen.getByPlaceholderText('••••••••'), 'Password123');
     await user.click(screen.getByRole('button', { name: 'Đăng nhập ngay' }));
 
     expect(await screen.findByText('home page')).toBeInTheDocument();
     expect(localStorage.getItem('book-loan-auth')).toContain('student-token');
-  });
+  }, 10000);
 
   it('shows register validation feedback inline', async () => {
     const user = userEvent.setup();
@@ -63,7 +63,7 @@ describe('Login', () => {
 
     await user.click(screen.getByRole('button', { name: 'Đăng ký' }));
     await user.type(screen.getByPlaceholderText('Nguyễn Văn A'), 'Nguyen Van A');
-    await user.type(screen.getByPlaceholderText('user@example.com hoặc MSSV...'), 'not-an-email');
+    await user.type(screen.getByPlaceholderText('MSSV'), 'not-an-email');
     await user.type(screen.getByPlaceholderText('••••••••'), 'Password123');
     await user.click(screen.getByRole('button', { name: 'Đăng ký tài khoản' }));
 

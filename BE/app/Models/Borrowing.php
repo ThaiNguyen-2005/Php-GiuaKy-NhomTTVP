@@ -21,6 +21,8 @@ class Borrowing extends Model
         'member_id',
         'librarian_id',
         'status',
+        'rejection_reason',
+        'rejected_at',
         'borrow_date',
         'due_date',
         'return_date',
@@ -32,6 +34,7 @@ class Borrowing extends Model
             'borrow_date' => 'date',
             'due_date' => 'date',
             'return_date' => 'date',
+            'rejected_at' => 'datetime',
         ];
     }
 

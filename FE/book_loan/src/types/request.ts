@@ -13,6 +13,8 @@ export interface BorrowRequestListItem {
   requested_at?: string;
   due_date?: string | null;
   return_date?: string | null;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
   raw_status: BorrowStatus;
 }
 
@@ -26,4 +28,6 @@ export interface MemberBorrowRequest {
   borrow_date?: string;
   due_date?: string | null;
   return_date?: string | null;
+  rejected_at?: string | null;
+  rejection_reason?: string | null;
 }

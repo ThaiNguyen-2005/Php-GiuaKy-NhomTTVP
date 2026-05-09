@@ -22,8 +22,12 @@ const StudentRequests = lazy(() => import('./pages/student/StudentRequests'));
 const StudentSettings = lazy(() => import('./pages/student/StudentSettings'));
 
 export default function App() {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthReady, isAuthenticated, role } = useAuth();
   const homePath = role === 'admin' ? '/admin/dashboard' : '/home';
+
+  if (!isAuthReady) {
+    return <PageLoader />;
+  }
 
   return (
     <Suspense fallback={<PageLoader />}>

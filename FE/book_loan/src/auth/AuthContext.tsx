@@ -1,6 +1,8 @@
 import React, { createContext, useEffect, useContext, useMemo, useState } from 'react';
 import { logoutUser } from '../api/authApi';
-import { AUTH_EXPIRED_EVENT, type AuthExpiredEventDetail } from '../notifications/events';
+import { getMyProfile } from '../api/userApi';
+import { ApiError } from '../lib/errors';
+import { AUTH_EXPIRED_EVENT } from '../notifications/events';
 import {
   type AuthSession,
   type AuthUser,
@@ -14,6 +16,7 @@ type AuthContextValue = {
   session: AuthSession | null;
   user: AuthUser | null;
   role: UserRole | null;
+  isAuthReady: boolean;
   isAuthenticated: boolean;
   setSession: (session: AuthSession) => void;
   updateUser: (user: AuthUser) => void;
@@ -24,14 +27,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSessionState] = useState<AuthSession | null>(() => getStoredSession());
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
-    const handleAuthExpired = (event: Event) => {
-      const customEvent = event as CustomEvent<AuthExpiredEventDetail>;
-      if (customEvent.detail?.message) {
-        clearStoredSession();
-        setSessionState(null);
-      }
+    const handleAuthExpired = () => {
+      clearStoredSession();
+      setSessionState(null);
+      setIsAuthReady(true);
     };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener);
@@ -39,9 +41,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired as EventListener);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyStoredSession = async () => {
+      const storedSession = getStoredSession();
+
+      if (!storedSession?.token) {
+        if (isMounted) {
+          setSessionState(null);
+          setIsAuthReady(true);
+        }
+
+        return;
+      }
+
+      try {
+        const profile = await getMyProfile();
+        const nextSession: AuthSession = {
+          ...storedSession,
+          role: profile.role,
+          user: profile.user,
+        };
+
+        setStoredSession(nextSession);
+
+        if (isMounted) {
+          setSessionState(nextSession);
+        }
+      } catch (error: unknown) {
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          clearStoredSession();
+
+          if (isMounted) {
+            setSessionState(null);
+          }
+
+          return;
+        }
+
+        if (isMounted) {
+          setSessionState(storedSession);
+        }
+      } finally {
+        if (isMounted) {
+          setIsAuthReady(true);
+        }
+      }
+    };
+
+    void verifyStoredSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const setSession = (nextSession: AuthSession) => {
     setStoredSession(nextSession);
     setSessionState(nextSession);
+    setIsAuthReady(true);
   };
 
   const updateUser = (user: AuthUser) => {
@@ -70,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       clearStoredSession();
       setSessionState(null);
+      setIsAuthReady(true);
     }
   };
 
@@ -78,12 +138,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user: session?.user ?? null,
       role: session?.role ?? null,
+      isAuthReady,
       isAuthenticated: Boolean(session?.token),
       setSession,
       updateUser,
       logout,
     }),
-    [session]
+    [isAuthReady, session]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

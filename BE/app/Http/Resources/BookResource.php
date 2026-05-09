@@ -21,6 +21,7 @@ class BookResource extends JsonResource
             'resource_type' => $this->resource_type,
             'file_format' => $this->file_format,
             'file_size' => $this->file_size,
+            'file_url' => $this->file_url,
             'download_count' => $this->download_count,
             'total_quantity' => $this->total_quantity,
             'available_quantity' => $this->available_quantity,

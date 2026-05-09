@@ -18,9 +18,11 @@ type RequestRow = {
   author: string;
   cover?: string | null;
   date: string;
+  dateLabel: string;
   rawStatus: MemberBorrowRequest['status'];
   statusLabel: string;
   statusColor: string;
+  rejectionReason?: string | null;
 };
 
 function formatDate(value?: string) {
@@ -46,10 +48,12 @@ export default function StudentRequests() {
             book: r.bookTitle,
             author: r.author,
             cover: r.cover,
-            date: formatDate(r.borrow_date),
+            date: formatDate(r.status === 'rejected' ? r.rejected_at || r.borrow_date : r.borrow_date),
+            dateLabel: r.status === 'rejected' ? 'Ngày từ chối' : 'Ngày mượn',
             rawStatus: r.status,
             statusLabel: cfg.label,
             statusColor: cfg.color,
+            rejectionReason: r.rejection_reason || null,
           };
         });
         setAllRequests(mapped);
@@ -70,6 +74,7 @@ export default function StudentRequests() {
     { key: 'pending', label: `Chờ duyệt (${countOf('pending')})` },
     { key: 'borrowed', label: `Đang mượn (${countOf('borrowed')})` },
     { key: 'returned', label: `Đã trả (${countOf('returned')})` },
+    { key: 'rejected', label: `Từ chối (${countOf('rejected')})` },
   ] as const;
 
   return (
@@ -132,10 +137,15 @@ export default function StudentRequests() {
                   </div>
                   <h4 className="truncate text-base font-bold text-on-surface">{request.book}</h4>
                   <p className="text-xs text-on-surface-variant">{request.author}</p>
+                  {request.rawStatus === 'rejected' && request.rejectionReason ? (
+                    <p className="mt-1 text-xs text-red-600">
+                      Lý do: {request.rejectionReason}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-outline">
-                    Ngày mượn
+                    {request.dateLabel}
                   </p>
                   <p className="text-sm font-medium text-slate-700">{request.date}</p>
                 </div>

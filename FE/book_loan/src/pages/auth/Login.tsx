@@ -216,8 +216,15 @@ export default function Login() {
                     Mật khẩu
                   </label>
                   {isLogin && (
-                    <a href="#" className="text-xs font-semibold text-primary hover:underline">
-                    </a>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setErrorMsg('Vui lòng liên hệ thủ thư hoặc phòng công tác sinh viên để đặt lại mật khẩu.')
+                      }
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      Quên mật khẩu?
+                    </button>
                   )}
                 </div>
                 <div className="relative">

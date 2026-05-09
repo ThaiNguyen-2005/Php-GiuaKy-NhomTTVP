@@ -26,6 +26,8 @@ class BookUpsertRequest extends FormRequest
             'resource_type' => ['nullable', 'string', 'max:50'],
             'file_format' => ['nullable', 'string', Rule::in(['PDF', 'EPUB', 'AUDIO', 'SLIDES'])],
             'file_size' => ['nullable', 'string', 'max:20'],
+            'file_path' => ['nullable', 'string', 'max:2048'],
+            'file_url' => ['nullable', 'url', 'max:2048'],
             'download_count' => ['nullable', 'integer', 'min:0'],
         ];
     }

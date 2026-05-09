@@ -3,11 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
-use App\Http\Requests\MemberIndexRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\AuthenticatedUserResource;
-use App\Http\Resources\MemberResource;
 use App\Models\Librarian;
 use App\Models\Member;
 use Illuminate\Http\Request;
@@ -121,24 +119,4 @@ class AuthController extends Controller
         ]);
     }
 
-    public function getAllMembers(MemberIndexRequest $request)
-    {
-        $validated = $request->validated();
-        $query = Member::query()->orderBy('member_id');
-        $search = trim((string) ($validated['query'] ?? ''));
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder
-                    ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone_number', 'like', '%'.$search.'%');
-            });
-        }
-
-        $members = $query->paginate($validated['limit'] ?? 15, ['*'], 'page', $validated['page'] ?? 1)
-            ->withQueryString();
-
-        return MemberResource::collection($members);
-    }
 }

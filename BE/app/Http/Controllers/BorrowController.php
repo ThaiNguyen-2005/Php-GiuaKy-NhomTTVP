@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BorrowStoreRequest;
 use App\Http\Requests\BorrowingIndexRequest;
+use App\Http\Requests\RejectBorrowRequest;
 use App\Http\Resources\BorrowingResource;
 use App\Models\Book;
 use App\Models\Borrowing;
@@ -96,6 +97,37 @@ class BorrowController extends Controller
 
         return response()->json([
             'message' => 'Da duyet yeu cau muon sach.',
+            'loan' => BorrowingResource::make($loan),
+        ]);
+    }
+
+    public function rejectBorrow(RejectBorrowRequest $request, int $loanId)
+    {
+        $librarian = $request->user();
+        $reason = $request->validated('reason');
+
+        $loan = DB::transaction(function () use ($loanId, $librarian, $reason) {
+            $loan = Borrowing::query()->lockForUpdate()->find($loanId);
+
+            if (! $loan) {
+                throw new HttpResponseException(response()->json(['message' => 'Khong tim thay yeu cau muon.'], 404));
+            }
+
+            if ($loan->status !== 'pending') {
+                throw new HttpResponseException(response()->json(['message' => 'Chi co the tu choi yeu cau dang cho duyet.'], 422));
+            }
+
+            $loan->status = 'rejected';
+            $loan->librarian_id = $librarian->librarian_id;
+            $loan->rejection_reason = $reason;
+            $loan->rejected_at = now();
+            $loan->save();
+
+            return $loan->fresh(['book', 'member', 'librarian']);
+        });
+
+        return response()->json([
+            'message' => 'Da tu choi yeu cau muon sach.',
             'loan' => BorrowingResource::make($loan),
         ]);
     }

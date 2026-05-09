@@ -1,10 +1,18 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../auth/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { clearStoredSession, setStoredSession, type AuthSession } from '../auth/storage';
+
+const { getMyProfileMock } = vi.hoisted(() => ({
+  getMyProfileMock: vi.fn(),
+}));
+
+vi.mock('../api/userApi', () => ({
+  getMyProfile: () => getMyProfileMock(),
+}));
 
 function renderProtectedRoute(initialEntries: string[] = ['/']) {
   return render(
@@ -45,6 +53,37 @@ describe('ProtectedRoute', () => {
     };
 
     setStoredSession(session);
+    getMyProfileMock.mockResolvedValueOnce({
+      role: 'student',
+      user: session.user,
+    });
+
+    renderProtectedRoute(['/admin/dashboard']);
+
+    expect(await screen.findByText('student page')).toBeInTheDocument();
+  });
+
+  it('uses the server verified role before allowing protected pages', async () => {
+    const session: AuthSession = {
+      token: 'token-2',
+      role: 'admin',
+      user: {
+        librarian_id: 1,
+        name: 'Stored Admin',
+        email: 'admin@example.com',
+      },
+    };
+
+    setStoredSession(session);
+    getMyProfileMock.mockResolvedValueOnce({
+      role: 'student',
+      user: {
+        member_id: 12,
+        name: 'Verified Student',
+        email: 'student@example.com',
+      },
+    });
+
     renderProtectedRoute(['/admin/dashboard']);
 
     expect(await screen.findByText('student page')).toBeInTheDocument();

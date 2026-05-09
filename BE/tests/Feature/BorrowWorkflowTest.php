@@ -127,4 +127,52 @@ class BorrowWorkflowTest extends TestCase
             'is_available' => 1,
         ]);
     }
+
+    public function test_admin_can_reject_pending_request_with_reason_without_changing_inventory(): void
+    {
+        $librarian = Librarian::query()->findOrFail(1);
+        $token = $librarian->createToken('librarian-reject-access', ['role:admin']);
+
+        $this->assertDatabaseHas('books', [
+            'book_id' => 2,
+            'available_quantity' => 1,
+        ]);
+
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/requests/2/reject', ['reason' => 'Duplicate request for the same title.'])
+            ->assertOk()
+            ->assertJsonPath('loan.status', 'rejected')
+            ->assertJsonPath('loan.librarian_id', 1)
+            ->assertJsonPath('loan.rejection_reason', 'Duplicate request for the same title.');
+
+        $this->assertDatabaseHas('borrowing', [
+            'loan_id' => 2,
+            'status' => 'rejected',
+            'librarian_id' => 1,
+            'rejection_reason' => 'Duplicate request for the same title.',
+        ]);
+
+        $this->assertDatabaseHas('books', [
+            'book_id' => 2,
+            'available_quantity' => 1,
+        ]);
+    }
+
+    public function test_reject_requires_reason_and_pending_status(): void
+    {
+        $librarian = Librarian::query()->findOrFail(1);
+        $token = $librarian->createToken('librarian-reject-validation-access', ['role:admin']);
+
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/requests/2/reject', ['reason' => ''])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['reason']);
+
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/requests/1/reject', ['reason' => 'Already borrowed.'])
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'Chi co the tu choi yeu cau dang cho duyet.',
+            ]);
+    }
 }

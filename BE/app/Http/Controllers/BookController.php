@@ -7,6 +7,9 @@ use App\Http\Requests\BookUpsertRequest;
 use App\Http\Resources\BookResource;
 use App\Http\Resources\DigitalDocumentResource;
 use App\Models\Book;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BookController extends Controller
 {
@@ -63,6 +66,8 @@ class BookController extends Controller
             'resource_type' => $validated['resource_type'] ?? null,
             'file_format' => $validated['file_format'] ?? null,
             'file_size' => $validated['file_size'] ?? null,
+            'file_path' => $validated['file_path'] ?? null,
+            'file_url' => $validated['file_url'] ?? null,
             'download_count' => (int) ($validated['download_count'] ?? 0),
             'total_quantity' => $quantity,
             'available_quantity' => $quantity,
@@ -95,6 +100,8 @@ class BookController extends Controller
             'resource_type' => array_key_exists('resource_type', $validated) ? $validated['resource_type'] : $book->resource_type,
             'file_format' => array_key_exists('file_format', $validated) ? $validated['file_format'] : $book->file_format,
             'file_size' => array_key_exists('file_size', $validated) ? $validated['file_size'] : $book->file_size,
+            'file_path' => array_key_exists('file_path', $validated) ? $validated['file_path'] : $book->file_path,
+            'file_url' => array_key_exists('file_url', $validated) ? $validated['file_url'] : $book->file_url,
             'download_count' => (int) ($validated['download_count'] ?? $book->download_count),
         ]);
         $book->total_quantity = $nextQuantity;
@@ -125,11 +132,91 @@ class BookController extends Controller
     public function getDigitalDocuments()
     {
         $documents = Book::query()
-            ->where('is_digital', true)
-            ->orWhereNotNull('file_format')
+            ->where(function ($query) {
+                $query
+                    ->where('is_digital', true)
+                    ->orWhereNotNull('file_format')
+                    ->orWhereNotNull('file_path')
+                    ->orWhereNotNull('file_url');
+            })
             ->orderByDesc('download_count')
             ->get();
 
         return DigitalDocumentResource::collection($documents);
+    }
+
+    public function downloadDigitalDocument(Request $request, Book $book)
+    {
+        if (! $book->is_digital && ! $book->file_format && ! $book->file_path && ! $book->file_url) {
+            return response()->json([
+                'message' => 'Tai lieu so khong ton tai.',
+            ], 404);
+        }
+
+        $book->increment('download_count');
+
+        if ($book->file_url) {
+            return redirect()->away($book->file_url);
+        }
+
+        $disposition = $request->query('disposition') === 'attachment' ? 'attachment' : 'inline';
+        $filename = $this->digitalFilename($book);
+
+        if ($book->file_path) {
+            $publicDisk = Storage::disk('public');
+
+            if ($publicDisk->exists($book->file_path)) {
+                return response($publicDisk->get($book->file_path), 200, [
+                    'Content-Type' => $publicDisk->mimeType($book->file_path) ?: 'application/octet-stream',
+                    'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+                ]);
+            }
+
+            if (Storage::exists($book->file_path)) {
+                return response(Storage::get($book->file_path), 200, [
+                    'Content-Type' => Storage::mimeType($book->file_path) ?: 'application/octet-stream',
+                    'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+                ]);
+            }
+        }
+
+        return response($this->fallbackDigitalDocument($book), 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+        ]);
+    }
+
+    private function digitalFilename(Book $book): string
+    {
+        $extension = strtolower((string) ($book->file_format ?: 'txt'));
+
+        if (! in_array($extension, ['pdf', 'epub', 'audio', 'slides'], true)) {
+            $extension = 'txt';
+        }
+
+        if ($extension === 'audio') {
+            $extension = 'mp3';
+        }
+
+        if ($extension === 'slides') {
+            $extension = 'txt';
+        }
+
+        return Str::slug($book->title ?: 'digital-document').'.'.$extension;
+    }
+
+    private function fallbackDigitalDocument(Book $book): string
+    {
+        return implode(PHP_EOL, [
+            'HCMUE Digital Library',
+            'Digital resource preview',
+            '',
+            'Title: '.$book->title,
+            'Author: '.$book->author,
+            'Format: '.($book->file_format ?: 'N/A'),
+            'Type: '.($book->resource_type ?: $book->genre ?: 'N/A'),
+            '',
+            'No physical file has been attached to this record yet.',
+        ]);
     }
 }

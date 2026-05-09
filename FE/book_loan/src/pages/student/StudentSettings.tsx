@@ -175,7 +175,7 @@ export default function StudentSettings() {
                   htmlFor="student-settings-member-id"
                   className="block text-xs font-bold uppercase tracking-widest text-slate-500"
                 >
-                  Mã số sinh viên
+                  Mã số độc giả
                 </label>
                 <input
                   id="student-settings-member-id"
@@ -195,9 +195,9 @@ export default function StudentSettings() {
                 <input
                   id="student-settings-email"
                   type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  value={user?.email || ''}
+                  className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none"
+                  readOnly
                 />
               </div>
               <div className="space-y-2">

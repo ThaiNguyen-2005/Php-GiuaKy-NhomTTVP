@@ -121,7 +121,7 @@ export default function Home() {
         ))}
       </section>
 
-      <section className="scholar-shadow relative h-[320px] overflow-hidden rounded-xl">
+      <section className="scholar-shadow relative min-h-[320px] w-full overflow-hidden rounded-xl">
         <div className="absolute inset-0 z-10 bg-gradient-to-r from-primary to-primary/40" />
         <img
           src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=2000"
@@ -130,11 +130,11 @@ export default function Home() {
           fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="relative z-20 flex h-full max-w-2xl flex-col justify-center p-12 text-white">
+        <div className="relative z-20 flex min-h-[320px] h-full max-w-2xl flex-col justify-center p-8 md:p-12 text-white">
           <span className="mb-4 inline-block w-fit rounded bg-tertiary px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
             Sách hay của tháng
           </span>
-          <h2 className="mb-4 text-5xl font-bold leading-tight">
+          <h2 className="mb-4 text-3xl md:text-5xl font-bold leading-tight text-wrap">
             Nghệ Thuật Của Tư Duy Rành Mạch
           </h2>
           <p className="mb-8 text-lg text-primary-container opacity-90">
@@ -142,10 +142,18 @@ export default function Home() {
             mỗi ngày.
           </p>
           <div className="flex gap-4">
-            <button className="rounded-lg bg-white px-6 py-3 font-bold text-primary transition-colors hover:bg-surface-container">
+            <button
+              type="button"
+              onClick={() => navigate('/catalog')}
+              className="rounded-lg bg-white px-6 py-3 font-bold text-primary transition-colors hover:bg-surface-container"
+            >
               Mượn ngay
             </button>
-            <button className="rounded-lg border border-white/30 bg-white/20 px-6 py-3 font-medium text-white backdrop-blur-md transition-colors hover:bg-white/30">
+            <button
+              type="button"
+              onClick={() => navigate('/catalog?q=tư duy')}
+              className="rounded-lg border border-white/30 bg-white/20 px-6 py-3 font-medium text-white backdrop-blur-md transition-colors hover:bg-white/30"
+            >
               Xem chi tiết
             </button>
           </div>
@@ -205,13 +213,13 @@ export default function Home() {
       <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-container-high pt-8 text-sm text-on-surface-variant md:flex-row">
         <p>© 2024 Ho Chi Minh City University of Education Digital Library. All rights reserved.</p>
         <div className="flex gap-6">
-          <a href="#" className="transition-colors hover:text-primary">
+          <button type="button" onClick={() => navigate('/requests')} className="transition-colors hover:text-primary">
             Điều khoản mượn trả
-          </a>
-          <a href="#" className="transition-colors hover:text-primary">
+          </button>
+          <button type="button" onClick={() => navigate('/settings')} className="transition-colors hover:text-primary">
             Chính sách bảo mật
-          </a>
-          <a href="#" className="transition-colors hover:text-primary">
+          </button>
+          <a href="mailto:library-support@hcmue.edu.vn" className="transition-colors hover:text-primary">
             Hỗ trợ sinh viên
           </a>
         </div>

@@ -13,6 +13,8 @@ type BorrowingResource = {
   member_id: number;
   librarian_id?: number | null;
   status: string;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
   borrow_date?: string | null;
   due_date?: string | null;
   return_date?: string | null;
@@ -46,6 +48,10 @@ function toRoleColor() {
   return 'bg-primary-container text-primary';
 }
 
+function toDateLabel(value?: string | null) {
+  return value ? value.slice(0, 10) : '';
+}
+
 function mapBorrowingToAdminItem(item: BorrowingResource): BorrowRequestListItem {
   return {
     id: item.loan_id,
@@ -56,10 +62,12 @@ function mapBorrowingToAdminItem(item: BorrowingResource): BorrowRequestListItem
     book: item.book?.title || 'Không rõ',
     bookCode: String(item.book?.book_id ?? item.book_id),
     status: toStatusLabel(item.status),
-    date: item.return_date || item.due_date || item.borrow_date || '',
+    date: toDateLabel(item.rejected_at || item.return_date || item.due_date || item.borrow_date),
     requested_at: item.borrow_date || undefined,
     due_date: item.due_date || null,
     return_date: item.return_date || null,
+    rejected_at: item.rejected_at || null,
+    rejection_reason: item.rejection_reason || null,
     raw_status: item.status as BorrowRequestListItem['raw_status'],
   };
 }
@@ -75,6 +83,8 @@ function mapBorrowingToMemberItem(item: BorrowingResource): MemberBorrowRequest 
     borrow_date: item.borrow_date || undefined,
     due_date: item.due_date || null,
     return_date: item.return_date || null,
+    rejected_at: item.rejected_at || null,
+    rejection_reason: item.rejection_reason || null,
   };
 }
 
@@ -106,6 +116,16 @@ export async function approveBorrow(loanId: number) {
     `/requests/${loanId}/approve`,
     {
       method: 'POST',
+    },
+  );
+}
+
+export async function rejectBorrow(loanId: number, reason: string) {
+  return apiRequest<{ message: string; loan: BorrowingResource }>(
+    `/requests/${loanId}/reject`,
+    {
+      method: 'POST',
+      body: { reason },
     },
   );
 }

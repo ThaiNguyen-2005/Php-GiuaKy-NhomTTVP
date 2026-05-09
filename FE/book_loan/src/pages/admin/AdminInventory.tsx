@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { addBook, deleteBook, fetchBooks, updateBook } from '../../api/bookApi';
 import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
 import { emitToast } from '../../notifications/events';
@@ -44,7 +45,17 @@ function getPageWindow(currentPage: number, totalPages: number) {
   return Array.from({ length: end - adjustedStart + 1 }, (_, index) => adjustedStart + index);
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export default function AdminInventory() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [books, setBooks] = useState<FormattedBook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +67,11 @@ export default function AdminInventory() {
   const [formData, setFormData] = useState<InventoryFormData>(EMPTY_FORM);
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
+
+  useEffect(() => {
+    setSearchTerm(searchParams.get('search') || '');
+    setPage(1);
+  }, [searchParams]);
 
   const loadBooks = async (showLoader = true) => {
     if (showLoader) {
@@ -181,8 +197,90 @@ export default function AdminInventory() {
     startTransition(() => {
       setSearchTerm(value);
       setPage(1);
+      const nextParams = new URLSearchParams(searchParams);
+
+      if (value.trim()) {
+        nextParams.set('search', value);
+      } else {
+        nextParams.delete('search');
+      }
+
+      setSearchParams(nextParams, { replace: true });
       setIsFiltering(false);
     });
+  };
+
+  const handlePrintBarcodes = () => {
+    if (filteredBooks.length === 0) {
+      emitToast({
+        tone: 'info',
+        title: 'Không có sách để in',
+        message: 'Bộ lọc hiện tại không có đầu sách nào.',
+      });
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=960,height=720');
+
+    if (!printWindow) {
+      emitToast({
+        tone: 'error',
+        title: 'Không thể mở cửa sổ in',
+        message: 'Vui lòng cho phép trình duyệt mở pop-up để in mã vạch.',
+      });
+      return;
+    }
+
+    const labels = filteredBooks
+      .map((book) => {
+        const code = `BOOK-${String(book.id).padStart(5, '0')}`;
+        const bars = String(book.id)
+          .padStart(12, '0')
+          .split('')
+          .map((digit) => {
+            const width = Number(digit) % 3 === 0 ? 3 : 1 + (Number(digit) % 3);
+            return `<span style="display:inline-block;width:${width}px;height:48px;background:#111;margin-right:2px"></span>`;
+          })
+          .join('');
+
+        return `
+          <article class="label">
+            <strong>${escapeHtml(book.title)}</strong>
+            <small>${escapeHtml(book.author)} | ${escapeHtml(book.location)}</small>
+            <div class="barcode">${bars}</div>
+            <code>${escapeHtml(code)}</code>
+          </article>
+        `;
+      })
+      .join('');
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Book barcodes</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 24px; font-family: Arial, sans-serif; color: #111827; }
+            h1 { margin: 0 0 16px; font-size: 20px; }
+            .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+            .label { min-height: 150px; border: 1px dashed #94a3b8; padding: 12px; page-break-inside: avoid; }
+            strong { display: block; font-size: 12px; line-height: 1.3; min-height: 32px; }
+            small { display: block; margin-top: 4px; color: #64748b; font-size: 10px; }
+            .barcode { margin: 12px 0 8px; white-space: nowrap; overflow: hidden; }
+            code { font-size: 11px; font-weight: 700; }
+            @media print { body { margin: 12mm; } }
+          </style>
+        </head>
+        <body>
+          <h1>Book barcode labels</h1>
+          <main class="grid">${labels}</main>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   const startItem = filteredBooks.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -198,7 +296,11 @@ export default function AdminInventory() {
           </p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 rounded-xl bg-surface-container px-5 py-2.5 font-medium text-on-surface transition-all hover:bg-surface-container-high">
+          <button
+            type="button"
+            onClick={handlePrintBarcodes}
+            className="flex items-center gap-2 rounded-xl bg-surface-container px-5 py-2.5 font-medium text-on-surface transition-all hover:bg-surface-container-high"
+          >
             <span className="material-symbols-outlined text-sm">print</span>
             In mã vạch
           </button>
