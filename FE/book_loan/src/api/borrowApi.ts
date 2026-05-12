@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import type { BorrowRequestListItem, MemberBorrowRequest } from '../types/request';
+import type { BorrowRequestListItem, DueStatus, MemberBorrowRequest } from '../types/request';
 
 export type { BorrowRequestListItem as BorrowRequest, MemberBorrowRequest as MemberRequest } from '../types/request';
 
@@ -18,6 +18,9 @@ type BorrowingResource = {
   borrow_date?: string | null;
   due_date?: string | null;
   return_date?: string | null;
+  is_overdue?: boolean;
+  days_overdue?: number;
+  due_status?: DueStatus;
   book?: {
     book_id: number;
     title: string;
@@ -68,6 +71,9 @@ function mapBorrowingToAdminItem(item: BorrowingResource): BorrowRequestListItem
     return_date: item.return_date || null,
     rejected_at: item.rejected_at || null,
     rejection_reason: item.rejection_reason || null,
+    is_overdue: Boolean(item.is_overdue),
+    days_overdue: Number(item.days_overdue ?? 0),
+    due_status: item.due_status,
     raw_status: item.status as BorrowRequestListItem['raw_status'],
   };
 }
@@ -85,6 +91,9 @@ function mapBorrowingToMemberItem(item: BorrowingResource): MemberBorrowRequest 
     return_date: item.return_date || null,
     rejected_at: item.rejected_at || null,
     rejection_reason: item.rejection_reason || null,
+    is_overdue: Boolean(item.is_overdue),
+    days_overdue: Number(item.days_overdue ?? 0),
+    due_status: item.due_status,
   };
 }
 

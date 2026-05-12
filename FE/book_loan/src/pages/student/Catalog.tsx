@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { requestBorrow } from '../../api/borrowApi';
-import { fetchBooks } from '../../api/bookApi';
+import { fetchBorrowableBooks } from '../../api/bookApi';
+import EmptyState from '../../components/EmptyState';
+import { applyImageFallback } from '../../lib/display';
 import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
 import { emitToast } from '../../notifications/events';
 import type { FormattedBook } from '../../types/book';
@@ -35,6 +37,7 @@ export default function Catalog() {
   const [books, setBooks] = useState<FormattedBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBorrowing, setIsBorrowing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const query = searchParams.get('q') || '';
   const category = searchParams.get('category') || 'all';
@@ -42,12 +45,17 @@ export default function Catalog() {
   const sort = readSort(searchParams.get('sort'));
 
   useEffect(() => {
-    fetchBooks()
+    setIsLoading(true);
+    setLoadError(null);
+
+    fetchBorrowableBooks()
       .then((data) => {
         setBooks(data);
       })
       .catch((error: unknown) => {
-        console.error(error);
+        const message = getErrorMessage(error, 'Không thể tải danh mục sách.');
+        setLoadError(message);
+        emitToast({ tone: 'error', title: 'Không thể tải danh mục', message });
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -294,9 +302,17 @@ export default function Catalog() {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {isLoading ? (
             <div className="col-span-full py-10 text-center">Đang tải biểu mẫu sách...</div>
+          ) : loadError ? (
+            <div className="col-span-full">
+              <EmptyState icon="error" title="Không thể tải danh mục" message={loadError} />
+            </div>
           ) : filteredBooks.length === 0 ? (
-            <div className="col-span-full rounded-lg border border-surface-container bg-surface-bright py-12 text-center text-sm text-on-surface-variant">
-              Không tìm thấy sách phù hợp với bộ lọc hiện tại.
+            <div className="col-span-full">
+              <EmptyState
+                icon="search_off"
+                title="Không tìm thấy sách phù hợp"
+                message="Thử xóa bộ lọc hoặc nhập từ khóa khác."
+              />
             </div>
           ) : (
             filteredBooks.map((book) => (
@@ -319,6 +335,7 @@ export default function Catalog() {
                   <img
                     src={book.cover}
                     alt={book.title}
+                    onError={(event) => applyImageFallback(event.currentTarget)}
                     loading="lazy"
                     decoding="async"
                     className={`h-full w-full object-cover ${book.is_available ? '' : 'grayscale-[0.55]'}`}
@@ -355,6 +372,7 @@ export default function Catalog() {
               <img
                 src={selectedBook.cover}
                 alt={selectedBook.title}
+                onError={(event) => applyImageFallback(event.currentTarget)}
                 decoding="async"
                 className="h-full w-full object-cover"
               />
@@ -382,6 +400,47 @@ export default function Catalog() {
                 >
                   <span className="material-symbols-outlined text-3xl">close</span>
                 </button>
+              </div>
+              <div className="rounded-2xl border border-surface-container bg-surface-container-low p-4">
+                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-outline">ISBN</p>
+                    <p className="mt-1 font-semibold text-on-surface">{selectedBook.isbn}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-outline">
+                      Năm xuất bản
+                    </p>
+                    <p className="mt-1 font-semibold text-on-surface">
+                      {selectedBook.published_year ?? 'Chưa rõ'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-outline">
+                      Vị trí kệ
+                    </p>
+                    <p className="mt-1 font-semibold text-on-surface">
+                      {selectedBook.location || 'Chưa rõ'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-outline">
+                      Tổng số / Còn lại
+                    </p>
+                    <p className="mt-1 font-semibold text-on-surface">
+                      {selectedBook.quantity} / {selectedBook.available_quantity}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-outline">
+                      Trạng thái
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 font-semibold text-on-surface">
+                      <span className={`h-2.5 w-2.5 rounded-full ${selectedBook.statusColor}`} />
+                      {selectedBook.status}
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="mt-12 flex items-center justify-between gap-6 border-t border-surface-container-high pt-6">
                 <div className="flex flex-col">

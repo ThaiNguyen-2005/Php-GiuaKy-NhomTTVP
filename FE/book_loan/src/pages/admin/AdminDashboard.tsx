@@ -9,6 +9,8 @@ import {
   type BorrowRequest,
 } from '../../api/borrowApi';
 import { getAllMembers } from '../../api/userApi';
+import EmptyState from '../../components/EmptyState';
+import { applyImageFallback } from '../../lib/display';
 import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
 import { emitToast } from '../../notifications/events';
 import type { FormattedBook } from '../../types/book';
@@ -95,6 +97,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>(INITIAL_STATS);
   const [quickForm, setQuickForm] = useState<QuickActionForm>({ memberId: '', bookId: '' });
   const [quickFeedback, setQuickFeedback] = useState<QuickActionFeedback | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<'borrow' | 'return' | null>(null);
   const [inventoryFilter, setInventoryFilter] = useState<'all' | 'paper' | 'digital' | 'reference'>('all');
   const [inventorySort, setInventorySort] = useState<'newest' | 'title' | 'quantity'>('newest');
@@ -102,6 +105,7 @@ export default function AdminDashboard() {
 
   const loadDashboard = async () => {
     try {
+      setLoadError(null);
       const [books, requests, members] = await Promise.all([
         fetchBooks(),
         getAllRequests(),
@@ -113,9 +117,17 @@ export default function AdminDashboard() {
 
       const pending = requests.filter((request) => request.raw_status === 'pending');
       const returned = requests.filter((request) => request.raw_status === 'returned');
-      const overdue = requests.filter(
-        (request) => request.raw_status === 'borrowed' && Boolean(request.due_date),
-      ).filter((request) => new Date(request.due_date as string) < new Date()).length;
+      const overdue = requests.filter((request) => {
+        if (request.raw_status !== 'borrowed') {
+          return false;
+        }
+
+        if (typeof request.is_overdue === 'boolean') {
+          return request.is_overdue;
+        }
+
+        return Boolean(request.due_date) && new Date(request.due_date as string) < new Date();
+      }).length;
 
       setPendingRequests(pending.slice(0, 5));
       setRecentReturns(returned.slice(0, 5));
@@ -125,8 +137,14 @@ export default function AdminDashboard() {
         books: books.length,
         members: members.length,
       });
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể tải dữ liệu dashboard.');
+      setLoadError(message);
+      emitToast({ tone: 'error', title: 'Không thể tải dashboard', message });
     }
   };
 
@@ -305,8 +323,13 @@ export default function AdminDashboard() {
       await approveBorrow(loanId);
       emitToast({ tone: 'success', title: 'Đã duyệt yêu cầu', message: `Phiếu #${loanId} đã được chuyển sang trạng thái mượn.` });
       await loadDashboard();
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể duyệt yêu cầu lúc này.');
+      emitToast({ tone: 'error', title: 'Không thể duyệt yêu cầu', message });
     }
   };
 
@@ -394,6 +417,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+      {loadError ? (
+        <EmptyState icon="error" title="Không thể tải đầy đủ dashboard" message={loadError} />
+      ) : null}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-surface-bright p-6 rounded-xl scholar-shadow border border-surface-container-low">
           <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
@@ -537,7 +564,18 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container">
-                  {pendingRequests.map((request) => (
+                  {pendingRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8">
+                        <EmptyState
+                          icon="assignment_turned_in"
+                          title="Không có yêu cầu chờ duyệt"
+                          message="Yêu cầu mượn mới của sinh viên sẽ xuất hiện tại đây."
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingRequests.map((request) => (
                     <tr key={request.id} className="hover:bg-surface-container/50 transition-all group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -574,7 +612,8 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -687,7 +726,14 @@ export default function AdminDashboard() {
                     <tr key={book.id} className="hover:bg-surface-container/30 transition-all">
                       <td className="px-6 py-4">
                         <div className="w-12 h-16 rounded-lg bg-surface-container-high overflow-hidden border border-surface-container">
-                          <img src={book.cover} alt={book.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                          <img
+                            src={book.cover}
+                            alt={book.title}
+                            onError={(event) => applyImageFallback(event.currentTarget)}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       </td>
                       <td className="px-6 py-4">

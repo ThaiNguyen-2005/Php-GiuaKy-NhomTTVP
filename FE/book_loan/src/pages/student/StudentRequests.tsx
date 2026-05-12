@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { getMyRequests } from '../../api/borrowApi';
+import EmptyState from '../../components/EmptyState';
+import { applyImageFallback, formatDisplayDate, getCoverUrl } from '../../lib/display';
+import { getErrorMessage } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 import type { MemberBorrowRequest } from '../../types/request';
 
 const STATUS_MAP: Record<
@@ -25,16 +29,16 @@ type RequestRow = {
   rejectionReason?: string | null;
 };
 
-function formatDate(value?: string) {
-  return value ? new Date(value).toLocaleDateString('vi-VN') : '—';
-}
-
 export default function StudentRequests() {
   const [activeTab, setActiveTab] = useState<'all' | MemberBorrowRequest['status']>('all');
   const [allRequests, setAllRequests] = useState<RequestRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+
     getMyRequests()
       .then((data: MemberBorrowRequest[]) => {
         const mapped = data.map((r) => {
@@ -47,8 +51,8 @@ export default function StudentRequests() {
             id: r.id,
             book: r.bookTitle,
             author: r.author,
-            cover: r.cover,
-            date: formatDate(r.status === 'rejected' ? r.rejected_at || r.borrow_date : r.borrow_date),
+            cover: getCoverUrl(r.cover),
+            date: formatDisplayDate(r.status === 'rejected' ? r.rejected_at || r.borrow_date : r.borrow_date),
             dateLabel: r.status === 'rejected' ? 'Ngày từ chối' : 'Ngày mượn',
             rawStatus: r.status,
             statusLabel: cfg.label,
@@ -59,7 +63,9 @@ export default function StudentRequests() {
         setAllRequests(mapped);
       })
       .catch((error: unknown) => {
-        console.error(error);
+        const message = getErrorMessage(error, 'Không thể tải yêu cầu mượn sách.');
+        setError(message);
+        emitToast({ tone: 'error', title: 'Không thể tải yêu cầu', message });
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -111,6 +117,18 @@ export default function StudentRequests() {
               <span className="material-symbols-outlined mb-3 text-4xl">hourglass_empty</span>
               <p>Đang tải dữ liệu...</p>
             </div>
+          ) : error ? (
+            <div className="p-5">
+              <EmptyState icon="error" title="Không thể tải dữ liệu" message={error} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-5">
+              <EmptyState
+                icon="pending_actions"
+                title="Không có yêu cầu phù hợp"
+                message="Các yêu cầu mượn, phiếu đang mượn và lịch sử xử lý sẽ xuất hiện tại đây."
+              />
+            </div>
           ) : (
             filtered.map((request) => (
               <div
@@ -119,8 +137,9 @@ export default function StudentRequests() {
               >
                 <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-surface-container">
                   <img
-                    src={request.cover || ''}
+                    src={request.cover}
                     alt={request.book}
+                    onError={(event) => applyImageFallback(event.currentTarget)}
                     className="h-full w-full object-cover"
                   />
                 </div>

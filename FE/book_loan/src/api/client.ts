@@ -39,10 +39,17 @@ async function performRequest<T>(
   headers: Headers,
   token: string | null,
 ) {
+  const { body, ...fetchOptions } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const response = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body:
+      body === undefined
+        ? undefined
+        : isFormData
+          ? body
+          : JSON.stringify(body),
   });
 
   const contentType = response.headers.get('content-type') || '';
@@ -85,7 +92,9 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     headers.set('Accept', 'application/json');
   }
 
-  if (requestOptions.body !== undefined) {
+  const isFormData = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData;
+
+  if (requestOptions.body !== undefined && !isFormData) {
     headers.set('Content-Type', 'application/json');
   }
 

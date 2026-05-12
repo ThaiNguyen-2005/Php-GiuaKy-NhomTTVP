@@ -4,6 +4,7 @@ import type {
   DigitalDocument as DigitalDocumentType,
   FormattedBook,
 } from '../types/book';
+import { getCoverUrl } from '../lib/display';
 
 export type { DigitalDocument } from '../types/book';
 
@@ -11,7 +12,7 @@ type PaginatedResponse<T> = {
   data: T[];
 };
 
-type BookPayload = {
+export type BookPayload = {
   title: string;
   author: string;
   category?: string;
@@ -56,19 +57,37 @@ function normalizeBook(book: BookApiRecord): FormattedBook {
     location: book.location || 'Khu A',
     status: toStatus(isAvailable),
     statusColor: toStatusColor(isAvailable),
-    cover:
-      book.cover ||
-      'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+    cover: getCoverUrl(book.cover),
     quantity: totalQuantity || 0,
     available_quantity: availableQuantity,
     published_year: book.published_year || undefined,
     is_available: isAvailable,
     is_digital: Boolean(book.is_digital),
+    resource_type: book.resource_type || null,
+    file_format: book.file_format || null,
+    file_size: book.file_size || null,
+    has_digital_file: Boolean(book.has_digital_file),
+    digital_file_name: book.digital_file_name || null,
+    download_count: Number(book.download_count ?? 0),
   };
 }
 
 export async function fetchBooks() {
   const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>('/books?limit=1000');
+  return unwrapCollection(data).map(normalizeBook);
+}
+
+export async function fetchBorrowableBooks() {
+  const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>(
+    '/books?is_digital=false&limit=1000'
+  );
+  return unwrapCollection(data).map(normalizeBook);
+}
+
+export async function fetchDigitalResourceBooks() {
+  const data = await apiRequest<BookApiRecord[] | PaginatedResponse<BookApiRecord>>(
+    '/books?is_digital=true&limit=1000'
+  );
   return unwrapCollection(data).map(normalizeBook);
 }
 
@@ -91,6 +110,28 @@ export async function addBook(payload: BookPayload) {
   return normalizeBook(book);
 }
 
+export async function addBorrowableBook(payload: BookPayload) {
+  return addBook({
+    ...payload,
+    is_digital: false,
+    resource_type: undefined,
+    file_format: undefined,
+    file_size: undefined,
+    file_path: undefined,
+    file_url: undefined,
+  });
+}
+
+export async function addDigitalResource(payload: BookPayload) {
+  return addBook({
+    ...payload,
+    is_digital: true,
+    quantity: 0,
+    location: payload.location || undefined,
+    file_url: undefined,
+  });
+}
+
 export async function updateBook(bookId: number, payload: BookPayload) {
   const book = await apiRequest<BookApiRecord>(`/books/${bookId}`, {
     method: 'PUT',
@@ -98,6 +139,39 @@ export async function updateBook(bookId: number, payload: BookPayload) {
       ...payload,
       genre: payload.genre || payload.category,
     },
+  });
+
+  return normalizeBook(book);
+}
+
+export async function updateBorrowableBook(bookId: number, payload: BookPayload) {
+  return updateBook(bookId, {
+    ...payload,
+    is_digital: false,
+    resource_type: undefined,
+    file_format: undefined,
+    file_size: undefined,
+    file_path: undefined,
+    file_url: undefined,
+  });
+}
+
+export async function updateDigitalResource(bookId: number, payload: BookPayload) {
+  return updateBook(bookId, {
+    ...payload,
+    is_digital: true,
+    location: payload.location || undefined,
+    file_url: undefined,
+  });
+}
+
+export async function uploadDigitalFile(bookId: number, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const book = await apiRequest<BookApiRecord>(`/books/${bookId}/digital-file`, {
+    method: 'POST',
+    body: formData,
   });
 
   return normalizeBook(book);
@@ -134,7 +208,7 @@ export async function fetchDigitalDocuments() {
               : format === 'SLIDES'
                 ? 'bg-orange-500'
                 : 'bg-primary',
-      cover: book.cover,
+      cover: getCoverUrl(book.cover),
       downloads: Number(book.download_count ?? 0),
       openUrl: book.open_url || null,
       downloadUrl: book.download_url || book.open_url || null,

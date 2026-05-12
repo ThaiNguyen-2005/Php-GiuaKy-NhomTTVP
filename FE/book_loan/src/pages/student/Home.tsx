@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBooks } from '../../api/bookApi';
+import { fetchBorrowableBooks } from '../../api/bookApi';
 import { getMyRequests } from '../../api/borrowApi';
+import EmptyState from '../../components/EmptyState';
+import { applyImageFallback } from '../../lib/display';
+import { getErrorMessage } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 import { FormattedBook } from '../../types/book';
 
 type HomeStats = {
@@ -23,18 +27,24 @@ export default function Home() {
   const [newBooks, setNewBooks] = useState<FormattedBook[]>([]);
   const [stats, setStats] = useState<HomeStats>(INITIAL_STATS);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
 
     const loadHomeData = async () => {
       setIsLoadingStats(true);
+      setLoadError(null);
 
       try {
-        const [books, requests] = await Promise.all([fetchBooks(), getMyRequests()]);
+        const [books, requests] = await Promise.all([fetchBorrowableBooks(), getMyRequests()]);
         const borrowed = requests.filter((request) => request.status === 'borrowed');
         const pending = requests.filter((request) => request.status === 'pending');
         const overdue = borrowed.filter((request) => {
+          if (typeof request.is_overdue === 'boolean') {
+            return request.is_overdue;
+          }
+
           if (!request.due_date) {
             return false;
           }
@@ -53,8 +63,13 @@ export default function Home() {
           catalogCount: books.length,
         });
         setNewBooks(books.slice(0, 5));
-      } catch (error) {
-        console.error(error);
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, 'Không thể tải dữ liệu trang chủ.');
+
+        if (isActive) {
+          setLoadError(message);
+          emitToast({ tone: 'error', title: 'Không thể tải trang chủ', message });
+        }
       } finally {
         if (isActive) {
           setIsLoadingStats(false);
@@ -102,6 +117,10 @@ export default function Home() {
 
   return (
     <div className="space-y-10 p-8">
+      {loadError ? (
+        <EmptyState icon="error" title="Không thể tải đầy đủ dữ liệu" message={loadError} />
+      ) : null}
+
       <section className="grid grid-cols-1 gap-6 md:grid-cols-4">
         {statCards.map((card) => (
           <button
@@ -170,8 +189,17 @@ export default function Home() {
             Xem tất cả <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {newBooks.map((book) => (
+        {isLoadingStats ? (
+          <EmptyState icon="hourglass_empty" title="Đang tải sách mới..." />
+        ) : newBooks.length === 0 ? (
+          <EmptyState
+            icon="library_books"
+            title="Chưa có sách để hiển thị"
+            message="Danh mục sẽ xuất hiện khi kết nối được với API thư viện."
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {newBooks.map((book) => (
             <div
               key={book.id}
               className="group flex cursor-pointer flex-col"
@@ -181,6 +209,7 @@ export default function Home() {
                 <img
                   src={book.cover}
                   alt={book.title}
+                  onError={(event) => applyImageFallback(event.currentTarget)}
                   loading="lazy"
                   decoding="async"
                   className="h-full w-full object-cover"
@@ -206,8 +235,9 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-surface-container-high pt-8 text-sm text-on-surface-variant md:flex-row">

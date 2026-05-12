@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { searchBooks } from '../api/bookApi';
+import { applyImageFallback } from '../lib/display';
 import type { FormattedBook } from '../types/book';
 
 export default function Header() {
@@ -97,6 +98,7 @@ export default function Header() {
                       <img
                         src={book.cover}
                         alt={book.title}
+                        onError={(event) => applyImageFallback(event.currentTarget)}
                         className="h-10 w-8 shrink-0 rounded object-cover"
                       />
                       <div className="min-w-0 flex-1">

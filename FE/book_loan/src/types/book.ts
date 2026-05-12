@@ -14,6 +14,8 @@ export interface BookApiRecord {
   open_url?: string | null;
   download_url?: string | null;
   has_attached_file?: boolean;
+  has_digital_file?: boolean;
+  digital_file_name?: string | null;
   download_count?: number | null;
   total_quantity?: number | null;
   available_quantity?: number | null;
@@ -37,6 +39,12 @@ export interface FormattedBook {
   published_year?: number;
   is_available: boolean;
   is_digital: boolean;
+  resource_type?: string | null;
+  file_format?: string | null;
+  file_size?: string | null;
+  has_digital_file?: boolean;
+  digital_file_name?: string | null;
+  download_count?: number | null;
 }
 
 export interface DigitalDocument {

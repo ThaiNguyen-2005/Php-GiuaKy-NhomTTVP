@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { fetchDigitalDocuments, type DigitalDocument } from '../../api/bookApi';
+import EmptyState from '../../components/EmptyState';
+import { applyImageFallback, getCoverUrl } from '../../lib/display';
+import { getErrorMessage } from '../../lib/errors';
+import { emitToast } from '../../notifications/events';
 
 export default function Digital() {
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [documents, setDocuments] = useState<DigitalDocument[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const displayDocuments =
     activeFilter === 'ALL'
@@ -12,10 +17,15 @@ export default function Digital() {
       : documents.filter((doc) => doc.format === activeFilter);
 
   useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+
     fetchDigitalDocuments()
       .then(setDocuments)
-      .catch((error) => {
-        console.error('Không thể tải tài liệu số:', error);
+      .catch((error: unknown) => {
+        const message = getErrorMessage(error, 'Không thể tải tài liệu số.');
+        setError(message);
+        emitToast({ tone: 'error', title: 'Không thể tải tài liệu số', message });
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -52,6 +62,18 @@ export default function Digital() {
           <div className="col-span-full py-12 text-center font-medium text-on-surface-variant">
             Đang tải tài liệu...
           </div>
+        ) : error ? (
+          <div className="col-span-full">
+            <EmptyState icon="error" title="Không thể tải tài liệu số" message={error} />
+          </div>
+        ) : displayDocuments.length === 0 ? (
+          <div className="col-span-full">
+            <EmptyState
+              icon="folder_open"
+              title="Không có tài liệu số phù hợp"
+              message="Thử chọn định dạng khác hoặc quay lại sau khi thư viện cập nhật thêm tài liệu."
+            />
+          </div>
         ) : (
           displayDocuments.map((resource) => (
             <div
@@ -60,8 +82,9 @@ export default function Digital() {
             >
               <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-surface-container">
                 <img
-                  src={resource.cover || ''}
+                  src={getCoverUrl(resource.cover)}
                   alt={resource.title}
+                  onError={(event) => applyImageFallback(event.currentTarget)}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80"></div>

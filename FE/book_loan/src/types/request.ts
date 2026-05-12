@@ -1,4 +1,5 @@
 export type BorrowStatus = 'pending' | 'borrowed' | 'returned' | 'rejected';
+export type DueStatus = 'none' | 'due_today' | 'due_soon' | 'overdue' | 'active' | 'returned';
 
 export interface BorrowRequestListItem {
   id: number;
@@ -15,6 +16,9 @@ export interface BorrowRequestListItem {
   return_date?: string | null;
   rejected_at?: string | null;
   rejection_reason?: string | null;
+  is_overdue?: boolean;
+  days_overdue?: number;
+  due_status?: DueStatus;
   raw_status: BorrowStatus;
 }
 
@@ -30,4 +34,7 @@ export interface MemberBorrowRequest {
   return_date?: string | null;
   rejected_at?: string | null;
   rejection_reason?: string | null;
+  is_overdue?: boolean;
+  days_overdue?: number;
+  due_status?: DueStatus;
 }

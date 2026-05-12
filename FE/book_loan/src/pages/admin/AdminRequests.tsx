@@ -7,6 +7,7 @@ import {
   returnBook,
   type BorrowRequest,
 } from '../../api/borrowApi';
+import EmptyState from '../../components/EmptyState';
 import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
 import { emitToast } from '../../notifications/events';
 
@@ -36,6 +37,7 @@ export default function AdminRequests() {
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeRequestId, setActiveRequestId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<BorrowRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectError, setRejectError] = useState<string | null>(null);
@@ -48,10 +50,17 @@ export default function AdminRequests() {
     }
 
     try {
+      setLoadError(null);
       const data = await getAllRequests();
       setRequests(data);
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+
+      const message = getErrorMessage(error, 'Không thể tải danh sách yêu cầu.');
+      setLoadError(message);
+      emitToast({ tone: 'error', title: 'Không thể tải yêu cầu', message });
     } finally {
       if (showLoader) {
         setIsLoading(false);
@@ -256,10 +265,20 @@ export default function AdminRequests() {
                     Đang tải dữ liệu...
                   </td>
                 </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8">
+                    <EmptyState icon="error" title="Không thể tải yêu cầu" message={loadError} />
+                  </td>
+                </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
-                    Không có bản ghi phù hợp trong tab này.
+                  <td colSpan={6} className="px-6 py-8">
+                    <EmptyState
+                      icon="assignment"
+                      title="Không có bản ghi phù hợp"
+                      message="Các phiếu mượn sẽ xuất hiện khi sinh viên gửi yêu cầu hoặc thủ thư xử lý phiếu."
+                    />
                   </td>
                 </tr>
               ) : (

@@ -6,6 +6,8 @@ import {
   getAllMembers,
   updateMember,
 } from '../../api/userApi';
+import EmptyState from '../../components/EmptyState';
+import { formatDisplayDate } from '../../lib/display';
 import { getErrorMessage, isUnauthorizedError } from '../../lib/errors';
 import { emitToast } from '../../notifications/events';
 import type { MemberApiRecord, MemberListItem, MemberPayload } from '../../types/member';
@@ -32,20 +34,6 @@ const EMPTY_FORM: MemberFormData = {
   password: '',
   password_confirmation: '',
 };
-
-function formatDate(value: string) {
-  if (!value) {
-    return 'Chưa cập nhật';
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString('vi-VN');
-}
 
 function mapMember(member: MemberApiRecord): MemberListItem {
   return {
@@ -330,8 +318,12 @@ export default function AdminMembers() {
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
-                    Không tìm thấy thành viên phù hợp.
+                  <td colSpan={7} className="px-6 py-8">
+                    <EmptyState
+                      icon="person_search"
+                      title="Không tìm thấy thành viên phù hợp"
+                      message="Thử thay đổi từ khóa tìm kiếm hoặc thêm thành viên mới."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -358,7 +350,7 @@ export default function AdminMembers() {
                       <p className="mt-0.5 text-xs text-slate-500">{member.phoneNumber}</p>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-700">
-                      {formatDate(member.joinDate)}
+                      {formatDisplayDate(member.joinDate, 'Chưa cập nhật')}
                     </td>
                     <td className="px-6 py-4">
                       <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">

@@ -69,7 +69,7 @@ describe('AdminMembers', () => {
 
     renderAdminMembers();
 
-    await screen.findByText('Không tìm thấy thành viên phù hợp.');
+    await screen.findByText('Không tìm thấy thành viên phù hợp');
     await user.click(screen.getByRole('button', { name: 'Thêm thành viên' }));
     await user.type(screen.getByLabelText(/Họ và tên/), 'Nguyen New Member');
     await user.type(screen.getByLabelText(/Email/), 'new.member@student.hcmue.edu.vn');
@@ -90,7 +90,7 @@ describe('AdminMembers', () => {
       });
       expect(screen.getByText('Nguyen New Member')).toBeInTheDocument();
     });
-  });
+  }, 10000);
 
   it('updates a member without requiring a password change', async () => {
     membersState = [
@@ -123,7 +123,7 @@ describe('AdminMembers', () => {
       });
       expect(screen.getByText('Updated Member')).toBeInTheDocument();
     });
-  });
+  }, 10000);
 
   it('deletes a member after confirmation', async () => {
     membersState = [

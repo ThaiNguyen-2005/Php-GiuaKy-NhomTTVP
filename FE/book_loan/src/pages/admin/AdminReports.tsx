@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchBooks, fetchDigitalDocuments } from '../../api/bookApi';
 import { getAllRequests } from '../../api/borrowApi';
 import { getAllMembers } from '../../api/userApi';
+import EmptyState from '../../components/EmptyState';
 import { getErrorMessage } from '../../lib/errors';
 
 type ReportStats = {
@@ -74,6 +75,10 @@ export default function AdminReports() {
 
         const borrowed = requests.filter((request) => request.raw_status === 'borrowed');
         const overdue = borrowed.filter((request) => {
+          if (typeof request.is_overdue === 'boolean') {
+            return request.is_overdue;
+          }
+
           if (!request.due_date) {
             return false;
           }
@@ -193,6 +198,12 @@ export default function AdminReports() {
               <div className="flex h-full w-full items-center justify-center text-sm text-on-surface-variant">
                 Đang tải dữ liệu...
               </div>
+            ) : bars.length === 0 ? (
+              <EmptyState
+                icon="bar_chart"
+                title="Chưa có dữ liệu phiếu mượn"
+                message="Biểu đồ sẽ xuất hiện khi có yêu cầu mượn hoặc trả sách."
+              />
             ) : (
               bars.map((bar) => (
                 <div key={bar.label} className="flex flex-1 flex-col items-center justify-end gap-3">
@@ -217,6 +228,12 @@ export default function AdminReports() {
             <div className="flex flex-1 items-center justify-center text-sm text-on-surface-variant">
               Đang tải dữ liệu...
             </div>
+          ) : topBooks.length === 0 ? (
+            <EmptyState
+              icon="leaderboard"
+              title="Chưa có lượt mượn"
+              message="Danh sách sách nổi bật sẽ xuất hiện khi hệ thống có giao dịch."
+            />
           ) : (
             <div className="space-y-4">
               {topBooks.map((book, index) => (
