@@ -28,6 +28,20 @@ class BorrowWorkflowTest extends TestCase
             ]);
     }
 
+    public function test_request_borrow_rejects_digital_resource_records(): void
+    {
+        $member = Member::query()->findOrFail(3);
+        $token = $member->createToken('member-digital-borrow-access', ['role:student']);
+        $digitalBook = Book::query()->where('is_digital', true)->firstOrFail();
+
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/requests', ['book_id' => $digitalBook->book_id])
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'Tai lieu so khong the duoc muon nhu sach vat ly.',
+            ]);
+    }
+
     public function test_request_borrow_rejects_when_active_limit_is_reached(): void
     {
         $member = Member::query()->findOrFail(2);
@@ -156,6 +170,31 @@ class BorrowWorkflowTest extends TestCase
             'book_id' => 2,
             'available_quantity' => 1,
         ]);
+    }
+
+    public function test_borrowing_resource_exposes_overdue_fields(): void
+    {
+        $member = Member::query()->findOrFail(3);
+        $librarian = Librarian::query()->findOrFail(1);
+        $token = $librarian->createToken('librarian-overdue-access', ['role:admin']);
+
+        $loan = Borrowing::query()->create([
+            'book_id' => 4,
+            'member_id' => $member->member_id,
+            'librarian_id' => $librarian->librarian_id,
+            'status' => 'borrowed',
+            'borrow_date' => today()->subDays(20)->toDateString(),
+            'due_date' => today()->subDays(3)->toDateString(),
+            'return_date' => null,
+        ]);
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/requests?status=borrowed&limit=1000')
+            ->assertOk()
+            ->assertJsonPath('data.0.loan_id', $loan->loan_id)
+            ->assertJsonPath('data.0.is_overdue', true)
+            ->assertJsonPath('data.0.days_overdue', 3)
+            ->assertJsonPath('data.0.due_status', 'overdue');
     }
 
     public function test_reject_requires_reason_and_pending_status(): void

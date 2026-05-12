@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminMemberController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BorrowController;
+use App\Http\Controllers\LibrarySettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:auth')->group(function () {
@@ -27,12 +28,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/library-settings', [LibrarySettingController::class, 'show']);
+        Route::put('/library-settings', [LibrarySettingController::class, 'update']);
         Route::get('/members', [AdminMemberController::class, 'index']);
         Route::post('/members', [AdminMemberController::class, 'store']);
         Route::put('/members/{member}', [AdminMemberController::class, 'update']);
         Route::delete('/members/{member}', [AdminMemberController::class, 'destroy']);
         Route::post('/books', [BookController::class, 'store']);
         Route::put('/books/{book}', [BookController::class, 'update']);
+        Route::post('/books/{book}/digital-file', [BookController::class, 'uploadDigitalFile']);
         Route::delete('/books/{book}', [BookController::class, 'destroy']);
         Route::get('/requests', [BorrowController::class, 'getAllRequests']);
         Route::post('/requests/{loanId}/approve', [BorrowController::class, 'approveBorrow']);

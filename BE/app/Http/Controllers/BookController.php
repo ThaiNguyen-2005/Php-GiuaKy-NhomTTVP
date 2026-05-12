@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BookIndexRequest;
 use App\Http\Requests\BookUpsertRequest;
+use App\Http\Requests\DigitalFileUploadRequest;
 use App\Http\Resources\BookResource;
 use App\Http\Resources\DigitalDocumentResource;
 use App\Models\Book;
@@ -129,16 +130,36 @@ class BookController extends Controller
         ]);
     }
 
+    public function uploadDigitalFile(DigitalFileUploadRequest $request, Book $book)
+    {
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+        $filename = $this->storedDigitalFilename($file->getClientOriginalName(), $extension);
+        $directory = 'digital-documents/'.$book->book_id;
+
+        if ($book->file_path && Storage::disk('local')->exists($book->file_path)) {
+            Storage::disk('local')->delete($book->file_path);
+        }
+
+        $path = $file->storeAs($directory, $filename, 'local');
+
+        $book->fill([
+            'is_digital' => true,
+            'resource_type' => $book->resource_type ?: 'Tai lieu so',
+            'file_format' => $this->digitalFormatFromExtension($extension),
+            'file_size' => $this->formatFileSize((int) $file->getSize()),
+            'file_path' => $path,
+            'file_url' => null,
+        ]);
+        $book->save();
+
+        return response()->json(new BookResource($book->fresh()));
+    }
+
     public function getDigitalDocuments()
     {
         $documents = Book::query()
-            ->where(function ($query) {
-                $query
-                    ->where('is_digital', true)
-                    ->orWhereNotNull('file_format')
-                    ->orWhereNotNull('file_path')
-                    ->orWhereNotNull('file_url');
-            })
+            ->where('is_digital', true)
             ->orderByDesc('download_count')
             ->get();
 
@@ -155,14 +176,17 @@ class BookController extends Controller
 
         $book->increment('download_count');
 
-        if ($book->file_url) {
-            return redirect()->away($book->file_url);
-        }
-
         $disposition = $request->query('disposition') === 'attachment' ? 'attachment' : 'inline';
         $filename = $this->digitalFilename($book);
 
         if ($book->file_path) {
+            if (Storage::disk('local')->exists($book->file_path)) {
+                return response(Storage::disk('local')->get($book->file_path), 200, [
+                    'Content-Type' => Storage::disk('local')->mimeType($book->file_path) ?: 'application/octet-stream',
+                    'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+                ]);
+            }
+
             $publicDisk = Storage::disk('public');
 
             if ($publicDisk->exists($book->file_path)) {
@@ -180,14 +204,55 @@ class BookController extends Controller
             }
         }
 
+        if ($book->file_url) {
+            return redirect()->away($book->file_url);
+        }
+
         return response($this->fallbackDigitalDocument($book), 200, [
             'Content-Type' => 'text/plain; charset=UTF-8',
             'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
         ]);
     }
 
+    private function storedDigitalFilename(string $originalName, string $extension): string
+    {
+        $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+        $slug = Str::slug($baseName) ?: 'digital-file';
+
+        return $slug.'.'.$extension;
+    }
+
+    private function digitalFormatFromExtension(string $extension): string
+    {
+        return match ($extension) {
+            'pdf' => 'PDF',
+            'epub' => 'EPUB',
+            'mp3', 'wav', 'm4a' => 'AUDIO',
+            'ppt', 'pptx' => 'SLIDES',
+            default => strtoupper($extension),
+        };
+    }
+
+    private function formatFileSize(int $bytes): string
+    {
+        if ($bytes >= 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 1).' MB';
+        }
+
+        return max(1, (int) ceil($bytes / 1024)).' KB';
+    }
+
     private function digitalFilename(Book $book): string
     {
+        $pathExtension = $book->file_path
+            ? strtolower(pathinfo($book->file_path, PATHINFO_EXTENSION))
+            : null;
+        $allowedExtensions = ['pdf', 'epub', 'mp3', 'wav', 'm4a', 'txt', 'ppt', 'pptx'];
+
+        if ($pathExtension && in_array($pathExtension, $allowedExtensions, true)) {
+            return Str::slug($book->title ?: 'digital-document').'.'.$pathExtension;
+        }
+
         $extension = strtolower((string) ($book->file_format ?: 'txt'));
 
         if (! in_array($extension, ['pdf', 'epub', 'audio', 'slides'], true)) {

@@ -8,6 +8,7 @@ use App\Http\Requests\RejectBorrowRequest;
 use App\Http\Resources\BorrowingResource;
 use App\Models\Book;
 use App\Models\Borrowing;
+use App\Models\LibrarySetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -27,14 +28,18 @@ class BorrowController extends Controller
                 throw new HttpResponseException(response()->json(['message' => 'Sach hien khong co san de muon.'], 422));
             }
 
+            $settings = LibrarySetting::singleton();
+            $maxActiveLoans = max(1, (int) $settings->max_active_loans);
             $activeLoanCount = Borrowing::query()
                 ->where('member_id', $member->member_id)
                 ->whereIn('status', ['pending', 'borrowed'])
                 ->lockForUpdate()
                 ->count();
 
-            if ($activeLoanCount >= 5) {
-                throw new HttpResponseException(response()->json(['message' => 'Ban da dat gioi han 5 yeu cau dang hoat dong.'], 422));
+            if ($activeLoanCount >= $maxActiveLoans) {
+                throw new HttpResponseException(response()->json([
+                    'message' => 'Ban da dat gioi han '.$maxActiveLoans.' yeu cau dang hoat dong.',
+                ], 422));
             }
 
             $duplicateLoan = Borrowing::query()
@@ -46,6 +51,10 @@ class BorrowController extends Controller
 
             if ($duplicateLoan) {
                 throw new HttpResponseException(response()->json(['message' => 'Ban da co mot yeu cau hoac phieu muon cho cuon sach nay.'], 422));
+            }
+
+            if ($book->is_digital) {
+                throw new HttpResponseException(response()->json(['message' => 'Tai lieu so khong the duoc muon nhu sach vat ly.'], 422));
             }
 
             return Borrowing::query()->create([
@@ -85,7 +94,9 @@ class BorrowController extends Controller
 
             $loan->status = 'borrowed';
             $loan->librarian_id = $librarian->librarian_id;
-            $loan->due_date = now()->addDays(14)->toDateString();
+            $settings = LibrarySetting::singleton();
+            $loanPeriodDays = max(1, (int) $settings->loan_period_days);
+            $loan->due_date = now()->addDays($loanPeriodDays)->toDateString();
             $loan->save();
 
             $book->available_quantity = $book->available_quantity - 1;
@@ -152,8 +163,10 @@ class BorrowController extends Controller
             $loan->save();
 
             if ($book) {
-                $book->available_quantity += 1;
-                $book->is_available = true;
+                $totalQuantity = max(0, (int) $book->total_quantity);
+                $nextAvailable = min($totalQuantity, (int) $book->available_quantity + 1);
+                $book->available_quantity = $nextAvailable;
+                $book->is_available = $nextAvailable > 0;
                 $book->save();
             }
 
